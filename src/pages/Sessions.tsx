@@ -12,29 +12,39 @@ import { useToast } from '@/hooks/use-toast';
 type KajianSession = Tables<'kajian_sessions'>;
 
 export default function Sessions() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [sessions, setSessions] = useState<KajianSession[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchSessions();
-  }, []);
+    if (user) {
+      fetchSessions();
+    }
+  }, [user]);
 
   const fetchSessions = async () => {
     try {
+      console.log('Fetching sessions...');
+      
+      // Simplified query without complex joins that might cause RLS issues
       const { data, error } = await supabase
         .from('kajian_sessions')
         .select('*')
         .order('date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Sessions fetched successfully:', data?.length);
       setSessions(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching sessions:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch sessions",
+        description: `Failed to fetch sessions: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -43,9 +53,17 @@ export default function Sessions() {
   };
 
   const createSampleSession = async () => {
-    if (profile?.role !== 'admin') return;
+    if (profile?.role !== 'admin') {
+      toast({
+        title: "Access Denied",
+        description: "Only admins can create sessions",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log('Creating sample session...');
       const { error } = await supabase
         .from('kajian_sessions')
         .insert({
@@ -58,7 +76,10 @@ export default function Sessions() {
           max_participants: 50,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating session:', error);
+        throw error;
+      }
       
       toast({
         title: "Success",
@@ -66,18 +87,26 @@ export default function Sessions() {
       });
       
       fetchSessions();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating session:', error);
       toast({
         title: "Error",
-        description: "Failed to create session",
+        description: `Failed to create session: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  // Show loading state while user authentication is being determined
+  if (!user || loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+          <p>Loading sessions...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
