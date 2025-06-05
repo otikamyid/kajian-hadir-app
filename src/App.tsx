@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/AuthForm";
 import { Navbar } from "@/components/Navbar";
+import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import Sessions from "./pages/Sessions";
 import ScanQR from "./pages/ScanQR";
@@ -29,23 +30,62 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return <AuthForm />;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/sessions" element={<Sessions />} />
-          <Route path="/scan" element={<ScanQR />} />
-          <Route path="/participants" element={<Participants />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-    </div>
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/auth" element={<AuthForm />} />
+      
+      {/* Protected routes */}
+      {user ? (
+        <>
+          <Route path="/dashboard" element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <Dashboard />
+              </main>
+            </div>
+          } />
+          <Route path="/sessions" element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <Sessions />
+              </main>
+            </div>
+          } />
+          <Route path="/scan" element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <ScanQR />
+              </main>
+            </div>
+          } />
+          <Route path="/participants" element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <Participants />
+              </main>
+            </div>
+          } />
+          {/* Redirect to dashboard if user is logged in and tries to access landing */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </>
+      ) : (
+        /* Redirect to auth if not logged in and trying to access protected routes */
+        <>
+          <Route path="/dashboard" element={<Navigate to="/auth" replace />} />
+          <Route path="/sessions" element={<Navigate to="/auth" replace />} />
+          <Route path="/scan" element={<Navigate to="/auth" replace />} />
+          <Route path="/participants" element={<Navigate to="/auth" replace />} />
+        </>
+      )}
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
