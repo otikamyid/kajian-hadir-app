@@ -9,12 +9,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    navigate('/dashboard');
-    return null;
-  }
-
   const features = [
     {
       icon: QrCode,
@@ -58,21 +52,30 @@ export default function LandingPage() {
               <h1 className="text-2xl font-bold text-gray-900">Kajian Hadir</h1>
             </div>
             <div className="flex space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/auth')}
-                className="flex items-center space-x-2"
-              >
-                <Users className="h-4 w-4" />
-                <span>Login Peserta</span>
-              </Button>
-              <Button 
-                onClick={() => navigate('/auth')}
-                className="flex items-center space-x-2"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Login Admin</span>
-              </Button>
+              {user ? (
+                <Button onClick={() => navigate('/dashboard')}>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/auth')}
+                    className="flex items-center space-x-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    <span>Login Peserta</span>
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/auth')}
+                    className="flex items-center space-x-2"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Login Admin</span>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

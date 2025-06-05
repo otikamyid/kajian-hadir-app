@@ -21,10 +21,10 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -34,7 +34,7 @@ function AppContent() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/auth" element={<AuthForm />} />
+      <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <AuthForm />} />
       
       {/* Protected routes */}
       {user ? (
@@ -71,8 +71,6 @@ function AppContent() {
               </main>
             </div>
           } />
-          {/* Redirect to dashboard if user is logged in and tries to access landing */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </>
       ) : (
         /* Redirect to auth if not logged in and trying to access protected routes */
