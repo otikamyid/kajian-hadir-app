@@ -54,14 +54,26 @@ export function AuthForm() {
           // Update profile with additional info after signup
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            // Use upsert to handle profile updates safely
+            // Create participant entry
+            const { data: participant } = await supabase
+              .from('participants')
+              .insert({
+                name: name,
+                email: email,
+                phone: phone,
+                qr_code: `QR_${email.replace('@', '_')}_${user.id.substring(0, 8)}`
+              })
+              .select()
+              .single();
+
+            // Update profile with participant_id
             await supabase
               .from('profiles')
               .upsert({ 
                 id: user.id,
                 email: email,
-                name: name, 
-                phone: phone 
+                role: 'participant',
+                participant_id: participant?.id
               }, {
                 onConflict: 'id'
               });
@@ -94,14 +106,24 @@ export function AuthForm() {
               <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
               <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Kajian Hadir</h1>
             </div>
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-2 text-sm sm:text-base"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Kembali</span>
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/admin/auth')}
+                className="text-xs text-gray-500 hover:text-gray-700"
+                size="sm"
+              >
+                Admin
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/')}
+                className="flex items-center space-x-2 text-sm sm:text-base"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Kembali</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -176,7 +198,7 @@ export function AuthForm() {
                 <div className="bg-blue-50 p-3 rounded-lg">
                   <p className="text-xs sm:text-sm text-blue-800">
                     <strong>Info:</strong> Akun baru akan mendapat role "Peserta" secara default. 
-                    Untuk akses admin, hubungi administrator.
+                    Untuk akses admin, gunakan pendaftaran admin terpisah.
                   </p>
                 </div>
               )}

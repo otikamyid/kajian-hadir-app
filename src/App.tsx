@@ -12,6 +12,9 @@ import Dashboard from "./pages/Dashboard";
 import Sessions from "./pages/Sessions";
 import ScanQR from "./pages/ScanQR";
 import Participants from "./pages/Participants";
+import ProfileEdit from "./pages/ProfileEdit";
+import AdminAuth from "./pages/AdminAuth";
+import AdminRegister from "./pages/AdminRegister";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

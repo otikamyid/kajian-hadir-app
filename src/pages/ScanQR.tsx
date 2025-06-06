@@ -85,11 +85,14 @@ export default function ScanQR() {
             </CardHeader>
             <CardContent className="text-center space-y-4">
               {profile?.participant_id ? (
-                <QRCodeGenerator 
-                  value={`QR_${profile.participant_id}`}
-                  title="QR Code Anda"
-                  size={200}
-                />
+                <div>
+                  {/* Generate unique QR code based on participant data */}
+                  <QRCodeGenerator 
+                    value={`QR_${profile.email.replace('@', '_')}_${profile.participant_id.substring(0, 8)}`}
+                    title="QR Code Anda"
+                    size={200}
+                  />
+                </div>
               ) : (
                 <div className="bg-gray-100 p-8 rounded-lg">
                   <p className="text-gray-500 text-sm">
@@ -99,8 +102,8 @@ export default function ScanQR() {
               )}
               
               <div className="space-y-2 text-sm">
-                <p><strong>Nama:</strong> {profile?.email}</p>
                 <p><strong>Email:</strong> {profile?.email}</p>
+                <p><strong>ID:</strong> {profile?.participant_id?.substring(0, 8)}...</p>
               </div>
             </CardContent>
           </Card>
@@ -111,6 +114,7 @@ export default function ScanQR() {
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Tunjukkan QR code ini kepada admin saat check-in</li>
             <li>• Pastikan QR code terlihat jelas dan tidak tertutup</li>
+            <li>• QR code ini unik untuk Anda berdasarkan profil</li>
             <li>• Jika ada masalah, hubungi admin kajian</li>
           </ul>
         </div>
