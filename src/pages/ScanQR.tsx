@@ -13,6 +13,7 @@ export default function ScanQR() {
   const { profile } = useAuth();
   const [scanResult, setScanResult] = useState<string>('');
   const [participantInfo, setParticipantInfo] = useState<any>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const { toast } = useToast();
 
   const handleScan = async (result: string) => {
@@ -61,6 +62,10 @@ export default function ScanQR() {
     }
   };
 
+  const toggleScanning = () => {
+    setIsScanning(!isScanning);
+  };
+
   // Show participant view for non-admin users
   if (profile?.role !== 'admin') {
     return (
@@ -94,9 +99,8 @@ export default function ScanQR() {
               )}
               
               <div className="space-y-2 text-sm">
-                <p><strong>Nama:</strong> {profile?.name || profile?.email}</p>
+                <p><strong>Nama:</strong> {profile?.email}</p>
                 <p><strong>Email:</strong> {profile?.email}</p>
-                {profile?.phone && <p><strong>Phone:</strong> {profile.phone}</p>}
               </div>
             </CardContent>
           </Card>
@@ -134,7 +138,11 @@ export default function ScanQR() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <QRScanner onScan={handleScan} />
+            <QRScanner 
+              onScan={handleScan} 
+              isScanning={isScanning}
+              onToggleScanning={toggleScanning}
+            />
             {scanResult && (
               <div className="mt-4 p-3 bg-gray-100 rounded-lg">
                 <p className="text-sm font-medium">QR Code Result:</p>

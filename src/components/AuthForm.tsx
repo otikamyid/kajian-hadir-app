@@ -54,13 +54,17 @@ export function AuthForm() {
           // Update profile with additional info after signup
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // Use upsert to handle profile updates safely
             await supabase
               .from('profiles')
-              .update({ 
+              .upsert({ 
+                id: user.id,
+                email: email,
                 name: name, 
                 phone: phone 
-              })
-              .eq('id', user.id);
+              }, {
+                onConflict: 'id'
+              });
           }
           
           toast({
