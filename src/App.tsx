@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -38,6 +39,8 @@ function AppContent() {
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <AuthForm />} />
+      <Route path="/admin/auth" element={user ? <Navigate to="/dashboard" replace /> : <AdminAuth />} />
+      <Route path="/admin/register" element={user ? <Navigate to="/dashboard" replace /> : <AdminRegister />} />
       
       {/* Protected routes */}
       {user ? (
@@ -74,6 +77,14 @@ function AppContent() {
               </main>
             </div>
           } />
+          <Route path="/profile/edit" element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <ProfileEdit />
+              </main>
+            </div>
+          } />
         </>
       ) : (
         /* Redirect to auth if not logged in and trying to access protected routes */
@@ -82,6 +93,7 @@ function AppContent() {
           <Route path="/sessions" element={<Navigate to="/auth" replace />} />
           <Route path="/scan" element={<Navigate to="/auth" replace />} />
           <Route path="/participants" element={<Navigate to="/auth" replace />} />
+          <Route path="/profile/edit" element={<Navigate to="/auth" replace />} />
         </>
       )}
       
@@ -90,7 +102,7 @@ function AppContent() {
   );
 }
 
-const App = () => (
+const App: React.FC = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
