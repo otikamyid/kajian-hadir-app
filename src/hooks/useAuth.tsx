@@ -15,7 +15,6 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session immediately
     const getInitialSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -47,7 +46,6 @@ export function useAuth() {
 
     getInitialSession();
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -82,6 +80,55 @@ export function useAuth() {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    // Check if it's a demo account and create it if it doesn't exist
+    if (email === 'admin@kajian.com' || email === 'peserta@kajian.com') {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      // If user doesn't exist, create it
+      if (signInError && signInError.message.includes('Invalid login credentials')) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              name: email === 'admin@kajian.com' ? 'Admin Demo' : 'Peserta Demo',
+              phone: email === 'admin@kajian.com' ? '+628123456789' : '+628987654321'
+            }
+          }
+        });
+        
+        if (signUpError) {
+          return { error: signUpError };
+        }
+        
+        // After signup, update profile with correct role
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('profiles')
+            .update({ 
+              role: email === 'admin@kajian.com' ? 'admin' : 'participant',
+              name: email === 'admin@kajian.com' ? 'Admin Demo' : 'Peserta Demo',
+              phone: email === 'admin@kajian.com' ? '+628123456789' : '+628987654321'
+            })
+            .eq('id', user.id);
+        }
+        
+        // Now try to sign in again
+        return await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+      }
+      
+      return { error: signInError };
+    }
+    
+    // Regular sign in for non-demo accounts
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
