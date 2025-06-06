@@ -47,19 +47,36 @@ export default function AdminRegister() {
           variant: "destructive",
         });
       } else {
-        // Update profile with admin role and additional info
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('profiles')
-            .upsert({ 
-              id: user.id,
-              email: email,
-              role: 'admin' // Set as admin
-            }, {
-              onConflict: 'id'
-            });
-        }
+        // Wait a bit for the user to be created properly
+        setTimeout(async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              // Create admin profile with name and phone
+              await supabase
+                .from('profiles')
+                .upsert({ 
+                  id: user.id,
+                  email: email,
+                  role: 'admin'
+                }, {
+                  onConflict: 'id'
+                });
+
+              // Also create a participant entry for the admin (this stores name and phone)
+              await supabase
+                .from('participants')
+                .insert({
+                  name: name,
+                  email: email,
+                  phone: phone,
+                  qr_code: `QR_ADMIN_${email.replace('@', '_')}_${user.id.substring(0, 8)}`
+                });
+            }
+          } catch (profileError) {
+            console.error('Error updating profile:', profileError);
+          }
+        }, 1000);
         
         toast({
           title: "Success",

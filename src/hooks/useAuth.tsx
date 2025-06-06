@@ -105,18 +105,32 @@ export function useAuth() {
           return { error: signUpError };
         }
         
-        // After signup, update profile with correct role
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase
-            .from('profiles')
-            .update({ 
-              role: email === 'admin@kajian.com' ? 'admin' : 'participant',
-              name: email === 'admin@kajian.com' ? 'Admin Demo' : 'Peserta Demo',
-              phone: email === 'admin@kajian.com' ? '+628123456789' : '+628987654321'
-            })
-            .eq('id', user.id);
-        }
+        // After signup, wait a bit then update profile with correct role
+        setTimeout(async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Update profile
+            await supabase
+              .from('profiles')
+              .upsert({ 
+                id: user.id,
+                email: email,
+                role: email === 'admin@kajian.com' ? 'admin' : 'participant'
+              }, {
+                onConflict: 'id'
+              });
+
+            // Create participant entry
+            await supabase
+              .from('participants')
+              .insert({
+                name: email === 'admin@kajian.com' ? 'Admin Demo' : 'Peserta Demo',
+                email: email,
+                phone: email === 'admin@kajian.com' ? '+628123456789' : '+628987654321',
+                qr_code: `QR_${email.replace('@', '_')}_${user.id.substring(0, 8)}`
+              });
+          }
+        }, 1000);
         
         // Now try to sign in again
         return await supabase.auth.signInWithPassword({

@@ -1,12 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { User, MapPin, Mail, Phone, Edit } from 'lucide-react';
+import { Mail, Phone, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProfileDisplayProps {
@@ -15,7 +15,6 @@ interface ProfileDisplayProps {
 
 export function ProfileDisplay({ showEditButton = true }: ProfileDisplayProps) {
   const { profile } = useAuth();
-  const [profilePhoto, setProfilePhoto] = useState<string>('');
   const [participant, setParticipant] = useState<any>(null);
   const navigate = useNavigate();
 
@@ -26,30 +25,15 @@ export function ProfileDisplay({ showEditButton = true }: ProfileDisplayProps) {
   const fetchProfileData = async () => {
     if (!profile) return;
 
-    // Fetch participant data if user is a participant
-    if (profile.role === 'participant' && profile.participant_id) {
+    // Fetch participant data for both admin and participant
+    if (profile.email) {
       const { data } = await supabase
         .from('participants')
         .select('*')
-        .eq('id', profile.participant_id)
+        .eq('email', profile.email)
         .maybeSingle();
       
       setParticipant(data);
-    }
-
-    // Check for profile photo
-    if (profile.id) {
-      const { data } = await supabase.storage
-        .from('profile-photos')
-        .list(profile.id, { limit: 1 });
-      
-      if (data && data.length > 0) {
-        const { data: publicUrl } = supabase.storage
-          .from('profile-photos')
-          .getPublicUrl(`${profile.id}/${data[0].name}`);
-        
-        setProfilePhoto(publicUrl.publicUrl);
-      }
     }
   };
 
@@ -78,8 +62,7 @@ export function ProfileDisplay({ showEditButton = true }: ProfileDisplayProps) {
       <CardContent className="space-y-4">
         <div className="flex items-center space-x-4">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={profilePhoto} alt="Profile" />
-            <AvatarFallback className="text-lg">
+            <AvatarFallback className="text-lg bg-blue-500 text-white">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
@@ -103,13 +86,6 @@ export function ProfileDisplay({ showEditButton = true }: ProfileDisplayProps) {
             <div className="flex items-center space-x-3">
               <Phone className="h-4 w-4 text-gray-500" />
               <span className="text-sm">{participant.phone}</span>
-            </div>
-          )}
-          
-          {profile?.address && (
-            <div className="flex items-center space-x-3">
-              <MapPin className="h-4 w-4 text-gray-500" />
-              <span className="text-sm">{profile.address}</span>
             </div>
           )}
         </div>
