@@ -10,7 +10,7 @@ import { Calendar, Users, CheckCircle, XCircle } from 'lucide-react';
 type KajianSession = Tables<'kajian_sessions'>;
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, loading } = useAuth();
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalParticipants: 0,
@@ -18,22 +18,36 @@ export default function Dashboard() {
     blacklistedCount: 0,
   });
   const [recentSessions, setRecentSessions] = useState<KajianSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (!loading && profile) {
+      console.log('Profile loaded in dashboard:', profile);
+      fetchDashboardData();
+    }
+  }, [profile, loading]);
 
   const fetchDashboardData = async () => {
     try {
+      console.log('Fetching dashboard data for role:', profile?.role);
+      
       // Fetch statistics - only for admin
       if (profile?.role === 'admin') {
+        console.log('Fetching admin statistics...');
+        
         const [sessionsResult, participantsResult, attendanceResult, blacklistResult] = await Promise.all([
           supabase.from('kajian_sessions').select('id'),
           supabase.from('participants').select('id'),
           supabase.from('attendance').select('id').eq('check_in_time', new Date().toISOString().split('T')[0]),
           supabase.from('participants').select('id').eq('is_blacklisted', true),
         ]);
+
+        console.log('Admin stats results:', {
+          sessions: sessionsResult.data?.length,
+          participants: participantsResult.data?.length,
+          attendance: attendanceResult.data?.length,
+          blacklisted: blacklistResult.data?.length
+        });
 
         setStats({
           totalSessions: sessionsResult.data?.length || 0,
@@ -43,18 +57,23 @@ export default function Dashboard() {
         });
 
         // Fetch recent sessions
-        const { data: sessions } = await supabase
+        const { data: sessions, error: sessionsError } = await supabase
           .from('kajian_sessions')
           .select('*')
           .order('date', { ascending: false })
           .limit(5);
 
-        setRecentSessions(sessions || []);
+        if (sessionsError) {
+          console.error('Error fetching sessions:', sessionsError);
+        } else {
+          console.log('Recent sessions:', sessions);
+          setRecentSessions(sessions || []);
+        }
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
   };
 
@@ -65,16 +84,32 @@ export default function Dashboard() {
         <Icon className={`h-4 w-4 ${color}`} />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{loading ? '...' : value}</div>
+        <div className="text-2xl font-bold">{statsLoading ? '...' : value}</div>
       </CardContent>
     </Card>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+          <p className="text-gray-600">Memuat dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-gray-600">Selamat datang, {profile?.email}</p>
+        <p className="text-gray-600">
+          Selamat datang, {profile?.email} 
+          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+            {profile?.role === 'admin' ? 'Administrator' : 'Peserta'}
+          </span>
+        </p>
       </div>
 
       {/* Profile Display */}
@@ -149,6 +184,14 @@ export default function Dashboard() {
               Anda terdaftar sebagai peserta kajian. Gunakan menu QR Code untuk melihat 
               QR code Anda dan tunjukkan kepada admin saat check-in.
             </p>
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Fitur yang tersedia:</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Lihat QR code Anda di menu "Scan QR"</li>
+                <li>• Edit profil Anda dengan tombol "Edit" di atas</li>
+                <li>• Tunjukkan QR code kepada admin saat check-in</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
       )}

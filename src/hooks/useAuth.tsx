@@ -25,15 +25,7 @@ export function useAuth() {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          
-          if (mounted) {
-            setProfile(profileData);
-          }
+          await fetchProfile(session.user.id);
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -44,25 +36,44 @@ export function useAuth() {
       }
     };
 
+    const fetchProfile = async (userId: string) => {
+      try {
+        console.log('Fetching profile for user:', userId);
+        
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('Error fetching profile:', error);
+          return;
+        }
+        
+        console.log('Profile data fetched:', profileData);
+        
+        if (mounted) {
+          setProfile(profileData);
+        }
+      } catch (error) {
+        console.error('Error in fetchProfile:', error);
+      }
+    };
+
     getInitialSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         if (!mounted) return;
         
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          
-          if (mounted) {
-            setProfile(profileData);
-          }
+          await fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
@@ -80,89 +91,95 @@ export function useAuth() {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    // Check if it's a demo account and create it if it doesn't exist
-    if (email === 'admin@kajian.com' || email === 'peserta@kajian.com') {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      // If user doesn't exist, create it
-      if (signInError && signInError.message.includes('Invalid login credentials')) {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              name: email === 'admin@kajian.com' ? 'Admin Demo' : 'Peserta Demo',
-              phone: email === 'admin@kajian.com' ? '+628123456789' : '+628987654321'
-            }
-          }
-        });
-        
-        if (signUpError) {
-          return { error: signUpError };
-        }
-        
-        // After signup, wait a bit then update profile with correct role
-        setTimeout(async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            // Update profile
-            await supabase
-              .from('profiles')
-              .upsert({ 
-                id: user.id,
-                email: email,
-                role: email === 'admin@kajian.com' ? 'admin' : 'participant'
-              }, {
-                onConflict: 'id'
-              });
-
-            // Create participant entry
-            await supabase
-              .from('participants')
-              .insert({
-                name: email === 'admin@kajian.com' ? 'Admin Demo' : 'Peserta Demo',
-                email: email,
-                phone: email === 'admin@kajian.com' ? '+628123456789' : '+628987654321',
-                qr_code: `QR_${email.replace('@', '_')}_${user.id.substring(0, 8)}`
-              });
-          }
-        }, 1000);
-        
-        // Now try to sign in again
-        return await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-      }
-      
-      return { error: signInError };
-    }
+    console.log('Signing in with email:', email);
     
-    // Regular sign in for non-demo accounts
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    if (error) {
+      console.error('Sign in error:', error);
+    }
+    
     return { error };
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+    console.log('Signing up with email:', email);
+    
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`
       }
     });
+    
+    if (error) {
+      console.error('Sign up error:', error);
+      return { error };
+    }
+    
+    console.log('Sign up success:', data);
     return { error };
+  };
+
+  const createParticipantProfile = async (userId: string, email: string, name: string, phone: string, role: 'admin' | 'participant' = 'participant') => {
+    try {
+      console.log('Creating participant profile:', { userId, email, name, phone, role });
+      
+      // First create participant entry
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
+        .insert({
+          name: name,
+          email: email,
+          phone: phone,
+          qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
+        })
+        .select()
+        .single();
+
+      if (participantError) {
+        console.error('Error creating participant:', participantError);
+        throw participantError;
+      }
+      
+      console.log('Participant created:', participant);
+
+      // Then update/create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: userId,
+          email: email,
+          role: role,
+          participant_id: participant?.id
+        }, {
+          onConflict: 'id'
+        });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        throw profileError;
+      }
+      
+      console.log('Profile updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error in createParticipantProfile:', error);
+      return { error };
+    }
   };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    if (!error) {
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    }
     return { error };
   };
 
@@ -174,5 +191,6 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
+    createParticipantProfile,
   };
 }

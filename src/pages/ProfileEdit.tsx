@@ -27,16 +27,29 @@ export default function ProfileEdit() {
   const fetchParticipantData = async () => {
     if (!profile?.email) return;
 
-    const { data } = await supabase
-      .from('participants')
-      .select('*')
-      .eq('email', profile.email)
-      .maybeSingle();
-    
-    if (data) {
-      setParticipant(data);
-      setName(data.name || '');
-      setPhone(data.phone || '');
+    try {
+      console.log('Fetching participant data for profile edit:', profile.email);
+      
+      const { data, error } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('email', profile.email)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching participant:', error);
+        return;
+      }
+      
+      console.log('Participant data loaded:', data);
+      
+      if (data) {
+        setParticipant(data);
+        setName(data.name || '');
+        setPhone(data.phone || '');
+      }
+    } catch (error) {
+      console.error('Error in fetchParticipantData:', error);
     }
   };
 
@@ -47,6 +60,8 @@ export default function ProfileEdit() {
     setLoading(true);
 
     try {
+      console.log('Updating participant data:', { name, phone });
+      
       if (participant) {
         // Update existing participant
         const { error } = await supabase
@@ -57,7 +72,12 @@ export default function ProfileEdit() {
           })
           .eq('id', participant.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error:', error);
+          throw error;
+        }
+        
+        console.log('Participant updated successfully');
       } else {
         // Create new participant entry
         const { error } = await supabase
@@ -66,10 +86,15 @@ export default function ProfileEdit() {
             name: name,
             email: profile.email,
             phone: phone,
-            qr_code: `QR_${profile.email.replace('@', '_')}_${profile.id?.substring(0, 8)}`
+            qr_code: `QR_${profile.email.replace('@', '_').replace('.', '_')}_${profile.id?.substring(0, 8)}`
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+        
+        console.log('New participant created successfully');
       }
 
       toast({
@@ -77,8 +102,13 @@ export default function ProfileEdit() {
         description: "Profil berhasil diperbarui!",
       });
 
-      navigate('/dashboard');
+      // Refresh the page after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+
     } catch (error: any) {
+      console.error('Profile update error:', error);
       toast({
         title: "Error",
         description: error.message || "Terjadi kesalahan saat memperbarui profil",

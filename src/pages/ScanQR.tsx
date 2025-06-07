@@ -14,7 +14,37 @@ export default function ScanQR() {
   const [scanResult, setScanResult] = useState<string>('');
   const [participantInfo, setParticipantInfo] = useState<any>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [participantData, setParticipantData] = useState<any>(null);
   const { toast } = useToast();
+
+  // Fetch participant data for QR code generation
+  React.useEffect(() => {
+    if (profile?.role === 'participant' && profile.email) {
+      fetchParticipantData();
+    }
+  }, [profile]);
+
+  const fetchParticipantData = async () => {
+    if (!profile?.email) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('participants')
+        .select('*')
+        .eq('email', profile.email)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching participant data:', error);
+        return;
+      }
+      
+      console.log('Participant data for QR:', data);
+      setParticipantData(data);
+    } catch (error) {
+      console.error('Error in fetchParticipantData:', error);
+    }
+  };
 
   const handleScan = async (result: string) => {
     setScanResult(result);
@@ -84,26 +114,28 @@ export default function ScanQR() {
               <CardTitle className="text-lg sm:text-xl">QR Code Peserta</CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              {profile?.participant_id ? (
-                <div>
-                  {/* Generate unique QR code based on participant data */}
-                  <QRCodeGenerator 
-                    value={`QR_${profile.email.replace('@', '_')}_${profile.participant_id.substring(0, 8)}`}
-                    title="QR Code Anda"
-                    size={200}
-                  />
-                </div>
+              {participantData && participantData.qr_code ? (
+                <QRCodeGenerator 
+                  value={participantData.qr_code}
+                  title=""
+                  size={200}
+                />
               ) : (
                 <div className="bg-gray-100 p-8 rounded-lg">
                   <p className="text-gray-500 text-sm">
-                    QR Code sedang dibuat...
+                    {profile?.email ? 'QR Code sedang dimuat...' : 'Silakan lengkapi profil Anda terlebih dahulu'}
                   </p>
                 </div>
               )}
               
               <div className="space-y-2 text-sm">
                 <p><strong>Email:</strong> {profile?.email}</p>
-                <p><strong>ID:</strong> {profile?.participant_id?.substring(0, 8)}...</p>
+                {participantData && (
+                  <>
+                    <p><strong>Nama:</strong> {participantData.name}</p>
+                    <p><strong>QR Code:</strong> {participantData.qr_code}</p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

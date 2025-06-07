@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { Shield, ArrowLeft, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,7 +17,7 @@ export default function AdminRegister() {
   const [adminCode, setAdminCode] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signUp } = useAuth();
+  const { signUp, createParticipantProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -38,6 +37,8 @@ export default function AdminRegister() {
     setLoading(true);
 
     try {
+      console.log('Creating admin account with:', { email, name, phone });
+      
       // Sign up process
       const { error } = await signUp(email, password);
       if (error) {
@@ -52,38 +53,43 @@ export default function AdminRegister() {
           try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-              // Create admin profile with name and phone
-              await supabase
-                .from('profiles')
-                .upsert({ 
-                  id: user.id,
-                  email: email,
-                  role: 'admin'
-                }, {
-                  onConflict: 'id'
+              console.log('User created, now creating admin profile:', user.id);
+              
+              const result = await createParticipantProfile(user.id, email, name, phone, 'admin');
+              
+              if (result.error) {
+                console.error('Error creating admin profile:', result.error);
+                toast({
+                  title: "Error",
+                  description: "Gagal membuat profil admin",
+                  variant: "destructive",
                 });
-
-              // Also create a participant entry for the admin (this stores name and phone)
-              await supabase
-                .from('participants')
-                .insert({
-                  name: name,
-                  email: email,
-                  phone: phone,
-                  qr_code: `QR_ADMIN_${email.replace('@', '_')}_${user.id.substring(0, 8)}`
+              } else {
+                console.log('Admin profile created successfully');
+                toast({
+                  title: "Success",
+                  description: "Akun admin berhasil dibuat! Silakan login.",
                 });
+                navigate('/admin/auth');
+              }
             }
           } catch (profileError) {
-            console.error('Error updating profile:', profileError);
+            console.error('Error in profile creation:', profileError);
+            toast({
+              title: "Error",
+              description: "Terjadi kesalahan saat membuat profil admin",
+              variant: "destructive",
+            });
           }
-        }, 1000);
+        }, 2000);
         
         toast({
           title: "Success",
-          description: "Akun admin berhasil dibuat! Silakan periksa email untuk verifikasi.",
+          description: "Akun admin berhasil dibuat! Sedang mengatur profil...",
         });
       }
     } catch (error) {
+      console.error('Registration error:', error);
       toast({
         title: "Error",
         description: "Terjadi kesalahan. Silakan coba lagi.",

@@ -8,7 +8,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,7 +17,7 @@ export function AuthForm() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, createParticipantProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -42,7 +41,7 @@ export function AuthForm() {
           });
         }
       } else {
-        // Sign up process
+        // Sign up process untuk participant biasa
         const { error } = await signUp(email, password);
         if (error) {
           toast({
@@ -51,37 +50,17 @@ export function AuthForm() {
             variant: "destructive",
           });
         } else {
-          // Update profile with additional info after signup
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            // Create participant entry
-            const { data: participant } = await supabase
-              .from('participants')
-              .insert({
-                name: name,
-                email: email,
-                phone: phone,
-                qr_code: `QR_${email.replace('@', '_')}_${user.id.substring(0, 8)}`
-              })
-              .select()
-              .single();
-
-            // Update profile with participant_id
-            await supabase
-              .from('profiles')
-              .upsert({ 
-                id: user.id,
-                email: email,
-                role: 'participant',
-                participant_id: participant?.id
-              }, {
-                onConflict: 'id'
-              });
-          }
+          // Wait a bit for user to be created
+          setTimeout(async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              await createParticipantProfile(user.id, email, name, phone, 'participant');
+            }
+          }, 1000);
           
           toast({
             title: "Success",
-            description: "Akun berhasil dibuat! Silakan periksa email untuk verifikasi.",
+            description: "Akun peserta berhasil dibuat! Silakan periksa email untuk verifikasi.",
           });
         }
       }
