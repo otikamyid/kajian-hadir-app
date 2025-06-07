@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { QRScanner } from '@/components/QRScanner';
@@ -18,7 +17,7 @@ export default function ScanQR() {
   const { toast } = useToast();
 
   // Fetch participant data for QR code generation
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.role === 'participant' && profile.email) {
       fetchParticipantData();
     }

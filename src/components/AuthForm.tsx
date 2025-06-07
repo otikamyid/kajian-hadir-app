@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -54,9 +54,10 @@ export function AuthForm() {
           setTimeout(async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
+              console.log('Creating participant profile for user:', user.id);
               await createParticipantProfile(user.id, email, name, phone, 'participant');
             }
-          }, 1000);
+          }, 2000);
           
           toast({
             title: "Success",
