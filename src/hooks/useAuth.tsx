@@ -129,33 +129,41 @@ export function useAuth() {
     try {
       console.log('Creating participant profile:', { userId, email, name, phone, role });
       
-      // First create participant entry
-      const { data: participant, error: participantError } = await supabase
-        .from('participants')
-        .insert({
-          name: name,
-          email: email,
-          phone: phone,
-          qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
-        })
-        .select()
-        .single();
-
-      if (participantError) {
-        console.error('Error creating participant:', participantError);
-        throw participantError;
-      }
+      let participantId = null;
       
-      console.log('Participant created:', participant);
+      // Only create participant entry for participant role
+      if (role === 'participant') {
+        console.log('Creating participant entry for participant role');
+        const { data: participant, error: participantError } = await supabase
+          .from('participants')
+          .insert({
+            name: name,
+            email: email,
+            phone: phone,
+            qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
+          })
+          .select()
+          .single();
 
-      // Then create/update profile with correct role
+        if (participantError) {
+          console.error('Error creating participant:', participantError);
+          throw participantError;
+        }
+        
+        console.log('Participant created:', participant);
+        participantId = participant.id;
+      } else {
+        console.log('Skipping participant creation for admin role');
+      }
+
+      // Create/update profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: role, // Make sure this is set correctly
-          participant_id: participant?.id
+          role: role,
+          participant_id: participantId
         }, {
           onConflict: 'id'
         })
