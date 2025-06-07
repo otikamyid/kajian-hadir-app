@@ -9,161 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      attendance: {
-        Row: {
-          check_in_time: string | null
-          id: string
-          notes: string | null
-          participant_id: string | null
-          session_id: string | null
-          status: string | null
-        }
-        Insert: {
-          check_in_time?: string | null
-          id?: string
-          notes?: string | null
-          participant_id?: string | null
-          session_id?: string | null
-          status?: string | null
-        }
-        Update: {
-          check_in_time?: string | null
-          id?: string
-          notes?: string | null
-          participant_id?: string | null
-          session_id?: string | null
-          status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "attendance_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "participants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "kajian_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kajian_sessions: {
-        Row: {
-          created_at: string | null
-          date: string
-          description: string | null
-          end_time: string
-          id: string
-          is_active: boolean | null
-          location: string | null
-          max_participants: number | null
-          start_time: string
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date: string
-          description?: string | null
-          end_time: string
-          id?: string
-          is_active?: boolean | null
-          location?: string | null
-          max_participants?: number | null
-          start_time: string
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date?: string
-          description?: string | null
-          end_time?: string
-          id?: string
-          is_active?: boolean | null
-          location?: string | null
-          max_participants?: number | null
-          start_time?: string
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      participants: {
-        Row: {
-          blacklist_reason: string | null
-          created_at: string | null
-          email: string
-          id: string
-          is_blacklisted: boolean | null
-          name: string
-          phone: string | null
-          qr_code: string
-          updated_at: string | null
-        }
-        Insert: {
-          blacklist_reason?: string | null
-          created_at?: string | null
-          email: string
-          id?: string
-          is_blacklisted?: boolean | null
-          name: string
-          phone?: string | null
-          qr_code: string
-          updated_at?: string | null
-        }
-        Update: {
-          blacklist_reason?: string | null
-          created_at?: string | null
-          email?: string
-          id?: string
-          is_blacklisted?: boolean | null
-          name?: string
-          phone?: string | null
-          qr_code?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          address: string | null
-          created_at: string | null
-          email: string | null
-          id: string
-          participant_id: string | null
-          role: Database["public"]["Enums"]["user_role"] | null
-        }
-        Insert: {
-          address?: string | null
-          created_at?: string | null
-          email?: string | null
-          id: string
-          participant_id?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-        }
-        Update: {
-          address?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          participant_id?: string | null
-          role?: Database["public"]["Enums"]["user_role"] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_participant_id_fkey"
-            columns: ["participant_id"]
-            isOneToOne: false
-            referencedRelation: "participants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
@@ -172,7 +18,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      user_role: "admin" | "participant"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -287,8 +133,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      user_role: ["admin", "participant"],
-    },
+    Enums: {},
   },
 } as const
