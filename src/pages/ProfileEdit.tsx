@@ -11,7 +11,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function ProfileEdit() {
-  const { profile } = useAuth();
+  const { profile, updateParticipant } = useAuth();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -55,57 +55,35 @@ export default function ProfileEdit() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile?.email) return;
+    if (!profile?.email || !participant) {
+      toast({
+        title: "Error",
+        description: "Data peserta tidak ditemukan",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
 
     try {
-      console.log('Updating participant data:', { name, phone });
+      console.log('Updating participant data:', { participantId: participant.id, name, phone });
       
-      if (participant) {
-        // Update existing participant
-        const { error } = await supabase
-          .from('participants')
-          .update({
-            name: name,
-            phone: phone,
-          })
-          .eq('id', participant.id);
-
-        if (error) {
-          console.error('Update error:', error);
-          throw error;
-        }
-        
-        console.log('Participant updated successfully');
-      } else {
-        // Create new participant entry
-        const { error } = await supabase
-          .from('participants')
-          .insert({
-            name: name,
-            email: profile.email,
-            phone: phone,
-            qr_code: `QR_${profile.email.replace('@', '_').replace('.', '_')}_${profile.id?.substring(0, 8)}`
-          });
-
-        if (error) {
-          console.error('Insert error:', error);
-          throw error;
-        }
-        
-        console.log('New participant created successfully');
+      const result = await updateParticipant(participant.id, name, phone);
+      
+      if (result.error) {
+        throw result.error;
       }
+      
+      console.log('Participant updated successfully');
 
       toast({
-        title: "Success",
+        title: "Berhasil",
         description: "Profil berhasil diperbarui!",
       });
 
-      // Refresh the page after a short delay
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Navigate back to dashboard after successful update
+      navigate('/dashboard');
 
     } catch (error: any) {
       console.error('Profile update error:', error);
@@ -183,7 +161,7 @@ export default function ProfileEdit() {
               >
                 Batal
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || !participant}>
                 <Save className="h-4 w-4 mr-2" />
                 {loading ? 'Menyimpan...' : 'Simpan'}
               </Button>

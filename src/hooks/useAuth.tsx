@@ -148,27 +148,60 @@ export function useAuth() {
       
       console.log('Participant created:', participant);
 
-      // Then update/create profile
-      const { error: profileError } = await supabase
+      // Then create/update profile with correct role
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: role,
+          role: role, // Make sure this is set correctly
           participant_id: participant?.id
         }, {
           onConflict: 'id'
-        });
+        })
+        .select()
+        .single();
 
       if (profileError) {
         console.error('Error creating profile:', profileError);
         throw profileError;
       }
       
-      console.log('Profile updated successfully');
-      return { success: true };
+      console.log('Profile created/updated successfully:', profileData);
+      
+      // Update local state immediately
+      setProfile(profileData);
+      
+      return { success: true, profile: profileData };
     } catch (error) {
       console.error('Error in createParticipantProfile:', error);
+      return { error };
+    }
+  };
+
+  const updateParticipant = async (participantId: string, name: string, phone: string) => {
+    try {
+      console.log('Updating participant:', { participantId, name, phone });
+      
+      const { data, error } = await supabase
+        .from('participants')
+        .update({
+          name: name,
+          phone: phone,
+        })
+        .eq('id', participantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating participant:', error);
+        throw error;
+      }
+      
+      console.log('Participant updated successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error in updateParticipant:', error);
       return { error };
     }
   };
@@ -192,5 +225,6 @@ export function useAuth() {
     signUp,
     signOut,
     createParticipantProfile,
+    updateParticipant,
   };
 }

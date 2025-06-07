@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,47 +48,62 @@ export default function AdminRegister() {
           description: error.message,
           variant: "destructive",
         });
-      } else {
-        // Wait a bit for the user to be created properly
-        setTimeout(async () => {
-          try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              console.log('User created, now creating admin profile:', user.id);
+        setLoading(false);
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Akun admin berhasil dibuat! Sedang mengatur profil...",
+      });
+
+      // Wait a bit for the user to be created properly, then create admin profile
+      setTimeout(async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            console.log('User created, now creating admin profile:', user.id);
+            
+            const result = await createParticipantProfile(user.id, email, name, phone, 'admin');
+            
+            if (result.error) {
+              console.error('Error creating admin profile:', result.error);
+              toast({
+                title: "Error",
+                description: "Gagal membuat profil admin",
+                variant: "destructive",
+              });
+            } else {
+              console.log('Admin profile created successfully:', result.profile);
+              toast({
+                title: "Success",
+                description: "Akun admin berhasil dibuat! Anda akan diarahkan ke dashboard.",
+              });
               
-              const result = await createParticipantProfile(user.id, email, name, phone, 'admin');
-              
-              if (result.error) {
-                console.error('Error creating admin profile:', result.error);
-                toast({
-                  title: "Error",
-                  description: "Gagal membuat profil admin",
-                  variant: "destructive",
-                });
-              } else {
-                console.log('Admin profile created successfully');
-                toast({
-                  title: "Success",
-                  description: "Akun admin berhasil dibuat! Silakan login.",
-                });
-                navigate('/admin/auth');
-              }
+              // Wait a moment then navigate to dashboard
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 1500);
             }
-          } catch (profileError) {
-            console.error('Error in profile creation:', profileError);
+          } else {
             toast({
-              title: "Error",
-              description: "Terjadi kesalahan saat membuat profil admin",
+              title: "Error", 
+              description: "User tidak ditemukan setelah registrasi",
               variant: "destructive",
             });
           }
-        }, 2000);
-        
-        toast({
-          title: "Success",
-          description: "Akun admin berhasil dibuat! Sedang mengatur profil...",
-        });
-      }
+        } catch (profileError) {
+          console.error('Error in profile creation:', profileError);
+          toast({
+            title: "Error",
+            description: "Terjadi kesalahan saat membuat profil admin",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }, 3000);
+      
     } catch (error) {
       console.error('Registration error:', error);
       toast({
@@ -95,7 +111,6 @@ export default function AdminRegister() {
         description: "Terjadi kesalahan. Silakan coba lagi.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
