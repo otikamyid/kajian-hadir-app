@@ -9,13 +9,16 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Tables } from '@/integrations/supabase/types';
+
+type Participant = Tables<'participants'>;
 
 export default function ProfileEdit() {
   const { profile, updateParticipant } = useAuth();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [participant, setParticipant] = useState<any>(null);
+  const [participant, setParticipant] = useState<Participant | null>(null);
   const [formValid, setFormValid] = useState(false);
   
   const { toast } = useToast();

@@ -105,7 +105,7 @@ export default function Dashboard() {
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-gray-600">
-          Selamat datang, {profile?.email} 
+          Selamat datang, {profile?.email || 'User'} 
           <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
             {profile?.role === 'admin' ? 'Administrator' : 'Peserta'}
           </span>

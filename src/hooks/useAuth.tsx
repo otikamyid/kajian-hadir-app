@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 
 type Profile = Tables<'profiles'>;
+type Participant = Tables<'participants'>;
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);

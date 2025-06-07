@@ -44,7 +44,7 @@ export function Navbar() {
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-700">
-              {profile?.email} ({profile?.role})
+              {profile?.email || 'Loading...'} ({profile?.role || 'participant'})
             </span>
             <Button variant="outline" onClick={handleSignOut}>
               <LogOut className="h-4 w-4 mr-2" />

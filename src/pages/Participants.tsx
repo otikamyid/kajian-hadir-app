@@ -162,7 +162,7 @@ export default function Participants() {
 
                 <div className="flex justify-center">
                   <QRCodeGenerator 
-                    value={participant.qr_code} 
+                    value={participant.qr_code || participant.id} 
                     title="Participant QR"
                     size={120}
                   />

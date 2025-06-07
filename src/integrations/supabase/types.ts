@@ -9,7 +9,170 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          check_in_time: string
+          check_out_time: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          participant_id: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          check_in_time?: string
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          participant_id: string
+          session_id: string
+          status?: string
+        }
+        Update: {
+          check_in_time?: string
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          participant_id?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "kajian_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kajian_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          description: string | null
+          end_time: string
+          id: string
+          is_active: boolean
+          location: string | null
+          max_participants: number | null
+          start_time: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date: string
+          description?: string | null
+          end_time: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          max_participants?: number | null
+          start_time: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          max_participants?: number | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      participants: {
+        Row: {
+          blacklist_reason: string | null
+          created_at: string
+          email: string
+          id: string
+          is_blacklisted: boolean
+          name: string
+          phone: string | null
+          qr_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          blacklist_reason?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_blacklisted?: boolean
+          name: string
+          phone?: string | null
+          qr_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          blacklist_reason?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_blacklisted?: boolean
+          name?: string
+          phone?: string | null
+          qr_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          participant_id: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          participant_id?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          participant_id?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_profiles_participant_id"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
