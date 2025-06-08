@@ -50,7 +50,7 @@ export function AuthForm() {
             variant: "destructive",
           });
         } else {
-          // Wait a bit for user to be created
+          // Wait for user to be created, then create participant profile
           setTimeout(async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {

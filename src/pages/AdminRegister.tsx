@@ -18,7 +18,7 @@ export default function AdminRegister() {
   const [adminCode, setAdminCode] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { signUp, createParticipantProfile } = useAuth();
+  const { signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -40,7 +40,7 @@ export default function AdminRegister() {
     try {
       console.log('Creating admin account with:', { email, name, phone });
       
-      // Sign up process
+      // Sign up process with admin metadata
       const { error } = await signUp(email, password);
       if (error) {
         toast({
@@ -57,32 +57,42 @@ export default function AdminRegister() {
         description: "Akun admin berhasil dibuat! Sedang mengatur profil...",
       });
 
-      // Wait a bit for the user to be created properly, then create admin profile
+      // Wait for user to be created, then create admin profile directly
       setTimeout(async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             console.log('User created, now creating admin profile:', user.id);
             
-            const result = await createParticipantProfile(user.id, email, name, phone, 'admin');
-            
-            if (result.error) {
-              console.error('Error creating admin profile:', result.error);
+            // Create admin profile directly in profiles table
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .upsert({ 
+                id: user.id,
+                email: email,
+                role: 'admin',
+                participant_id: null
+              }, {
+                onConflict: 'id'
+              });
+
+            if (profileError) {
+              console.error('Error creating admin profile:', profileError);
               toast({
                 title: "Error",
                 description: "Gagal membuat profil admin",
                 variant: "destructive",
               });
             } else {
-              console.log('Admin profile created successfully:', result.profile);
+              console.log('Admin profile created successfully');
               toast({
                 title: "Success",
-                description: "Akun admin berhasil dibuat! Anda akan diarahkan ke dashboard.",
+                description: "Akun admin berhasil dibuat! Anda akan diarahkan ke dashboard admin.",
               });
               
-              // Wait a moment then navigate to dashboard
+              // Wait a moment then navigate to admin dashboard
               setTimeout(() => {
-                navigate('/dashboard');
+                navigate('/admin/dashboard');
               }, 1500);
             }
           } else {

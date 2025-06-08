@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 
 type Profile = Tables<'profiles'>;
-type Participant = Tables<'participants'>;
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -157,13 +156,13 @@ export function useAuth() {
         console.log('Skipping participant creation for admin role');
       }
 
-      // Create/update profile
+      // Create/update profile with correct role
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: role,
+          role: role, // Ensure the role is set correctly
           participant_id: participantId
         }, {
           onConflict: 'id'
