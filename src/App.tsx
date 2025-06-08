@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { AuthForm } from "@/components/AuthForm";
 import { Navbar } from "@/components/Navbar";
 import LandingPage from "./pages/LandingPage";
-import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import ParticipantDashboard from "./pages/ParticipantDashboard";
 import Sessions from "./pages/Sessions";
 import ScanQR from "./pages/ScanQR";
 import Participants from "./pages/Participants";
@@ -21,7 +22,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -34,25 +35,56 @@ function AppContent() {
     );
   }
 
+  // Helper function to determine the correct dashboard route
+  const getDashboardRoute = () => {
+    if (profile?.role === 'admin') {
+      return '/admin/dashboard';
+    }
+    return '/participant/dashboard';
+  };
+
   return (
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <AuthForm />} />
-      <Route path="/admin/auth" element={user ? <Navigate to="/dashboard" replace /> : <AdminAuth />} />
-      <Route path="/admin/register" element={user ? <Navigate to="/dashboard" replace /> : <AdminRegister />} />
+      <Route path="/auth" element={user ? <Navigate to={getDashboardRoute()} replace /> : <AuthForm />} />
+      <Route path="/admin/auth" element={user ? <Navigate to={getDashboardRoute()} replace /> : <AdminAuth />} />
+      <Route path="/admin/register" element={user ? <Navigate to={getDashboardRoute()} replace /> : <AdminRegister />} />
       
       {/* Protected routes */}
       {user ? (
         <>
-          <Route path="/dashboard" element={
-            <div className="min-h-screen bg-gray-50">
-              <Navbar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <Dashboard />
-              </main>
-            </div>
+          {/* Admin Dashboard */}
+          <Route path="/admin/dashboard" element={
+            profile?.role === 'admin' ? (
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <AdminDashboard />
+                </main>
+              </div>
+            ) : (
+              <Navigate to="/participant/dashboard" replace />
+            )
           } />
+          
+          {/* Participant Dashboard */}
+          <Route path="/participant/dashboard" element={
+            profile?.role === 'participant' ? (
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <ParticipantDashboard />
+                </main>
+              </div>
+            ) : (
+              <Navigate to="/admin/dashboard" replace />
+            )
+          } />
+          
+          {/* Legacy dashboard route - redirect to appropriate dashboard */}
+          <Route path="/dashboard" element={<Navigate to={getDashboardRoute()} replace />} />
+          
           <Route path="/sessions" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
@@ -89,6 +121,8 @@ function AppContent() {
       ) : (
         /* Redirect to auth if not logged in and trying to access protected routes */
         <>
+          <Route path="/admin/dashboard" element={<Navigate to="/auth" replace />} />
+          <Route path="/participant/dashboard" element={<Navigate to="/auth" replace />} />
           <Route path="/dashboard" element={<Navigate to="/auth" replace />} />
           <Route path="/sessions" element={<Navigate to="/auth" replace />} />
           <Route path="/scan" element={<Navigate to="/auth" replace />} />
