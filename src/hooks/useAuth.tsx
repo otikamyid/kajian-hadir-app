@@ -226,6 +226,34 @@ export function useAuth() {
     }
   };
 
+  const updateParticipant = async (participantId: string, name: string, phone: string) => {
+    try {
+      console.log('Updating participant:', { participantId, name, phone });
+      
+      const { data, error } = await supabase
+        .from('participants')
+        .update({
+          name: name,
+          phone: phone,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', participantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating participant:', error);
+        throw error;
+      }
+      
+      console.log('Participant updated successfully:', data);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error in updateParticipant:', error);
+      return { error };
+    }
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (!error) {
@@ -246,5 +274,6 @@ export function useAuth() {
     signOut,
     createAdminProfile,
     createParticipantProfile,
+    updateParticipant,
   };
 }
