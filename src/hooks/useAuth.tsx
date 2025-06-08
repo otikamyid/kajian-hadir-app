@@ -15,27 +15,6 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        }
-      } catch (error) {
-        console.error('Error getting initial session:', error);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
     const fetchProfile = async (userId: string) => {
       try {
         console.log('Fetching profile for user:', userId);
@@ -61,11 +40,9 @@ export function useAuth() {
       }
     };
 
-    getInitialSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
@@ -74,6 +51,33 @@ export function useAuth() {
         
         if (session?.user) {
           await fetchProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Use setTimeout to prevent infinite loops
+        if (session?.user) {
+          setTimeout(() => {
+            if (mounted) {
+              fetchProfile(session.user.id);
+            }
+          }, 0);
         } else {
           setProfile(null);
         }
@@ -83,6 +87,9 @@ export function useAuth() {
         }
       }
     );
+
+    // Then get initial session
+    getInitialSession();
 
     return () => {
       mounted = false;
@@ -125,6 +132,40 @@ export function useAuth() {
     return { error };
   };
 
+  const createAdminProfile = async (userId: string, email: string) => {
+    try {
+      console.log('Creating admin profile:', { userId, email });
+      
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: userId,
+          email: email,
+          role: 'admin',
+          participant_id: null
+        }, {
+          onConflict: 'id'
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Error creating admin profile:', profileError);
+        throw profileError;
+      }
+      
+      console.log('Admin profile created successfully:', profileData);
+      
+      // Update local state immediately
+      setProfile(profileData);
+      
+      return { success: true, profile: profileData };
+    } catch (error) {
+      console.error('Error in createAdminProfile:', error);
+      return { error };
+    }
+  };
+
   const createParticipantProfile = async (userId: string, email: string, name: string, phone: string, role: 'admin' | 'participant' = 'participant') => {
     try {
       console.log('Creating participant profile:', { userId, email, name, phone, role });
@@ -152,8 +193,6 @@ export function useAuth() {
         
         console.log('Participant created:', participant);
         participantId = participant.id;
-      } else {
-        console.log('Skipping participant creation for admin role');
       }
 
       // Create/update profile with correct role
@@ -162,7 +201,7 @@ export function useAuth() {
         .upsert({ 
           id: userId,
           email: email,
-          role: role, // Ensure the role is set correctly
+          role: role,
           participant_id: participantId
         }, {
           onConflict: 'id'
@@ -187,33 +226,6 @@ export function useAuth() {
     }
   };
 
-  const updateParticipant = async (participantId: string, name: string, phone: string) => {
-    try {
-      console.log('Updating participant:', { participantId, name, phone });
-      
-      const { data, error } = await supabase
-        .from('participants')
-        .update({
-          name: name,
-          phone: phone,
-        })
-        .eq('id', participantId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating participant:', error);
-        throw error;
-      }
-      
-      console.log('Participant updated successfully:', data);
-      return { success: true, data };
-    } catch (error) {
-      console.error('Error in updateParticipant:', error);
-      return { error };
-    }
-  };
-
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (!error) {
@@ -232,7 +244,7 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
+    createAdminProfile,
     createParticipantProfile,
-    updateParticipant,
   };
 }

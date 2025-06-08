@@ -24,6 +24,8 @@ const queryClient = new QueryClient();
 function AppContent() {
   const { user, profile, loading } = useAuth();
 
+  console.log('App render state:', { user: !!user, profile, loading });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
