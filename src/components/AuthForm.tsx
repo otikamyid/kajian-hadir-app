@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,16 @@ export function AuthForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isLogin && (!name || !phone)) {
+      toast({
+        title: "Error",
+        description: "Nama dan nomor telepon harus diisi",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -41,7 +52,7 @@ export function AuthForm() {
           });
         }
       } else {
-        // Sign up process untuk participant biasa
+        // Sign up untuk participant
         const { error } = await signUp(email, password);
         if (error) {
           toast({
@@ -49,23 +60,59 @@ export function AuthForm() {
             description: error.message,
             variant: "destructive",
           });
-        } else {
-          // Wait for user to be created, then create participant profile
-          setTimeout(async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              console.log('Creating participant profile for user:', user.id);
-              await createParticipantProfile(user.id, email, name, phone, 'participant');
-            }
-          }, 2000);
-          
-          toast({
-            title: "Success",
-            description: "Akun peserta berhasil dibuat! Silakan periksa email untuk verifikasi.",
-          });
+          return;
         }
+
+        toast({
+          title: "Processing",
+          description: "Akun berhasil dibuat! Sedang mengatur profil peserta...",
+        });
+
+        // Wait and create participant profile
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        const checkAndCreateProfile = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user && attempts < maxAttempts) {
+            console.log('User found, creating participant profile:', user.id);
+            
+            const result = await createParticipantProfile(user.id, email, name, phone);
+            
+            if (result.error) {
+              console.error('Error creating participant profile:', result.error);
+              toast({
+                title: "Error",
+                description: "Gagal membuat profil peserta",
+                variant: "destructive",
+              });
+            } else {
+              toast({
+                title: "Success",
+                description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
+              });
+              
+              setTimeout(() => {
+                navigate('/participant/dashboard');
+              }, 1000);
+            }
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(checkAndCreateProfile, 1000);
+          } else {
+            toast({
+              title: "Error",
+              description: "Timeout saat membuat profil peserta",
+              variant: "destructive",
+            });
+          }
+        };
+
+        setTimeout(checkAndCreateProfile, 2000);
       }
     } catch (error) {
+      console.error('Auth error:', error);
       toast({
         title: "Error",
         description: "Terjadi kesalahan. Silakan coba lagi.",
@@ -84,7 +131,7 @@ export function AuthForm() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Kajian Hadir</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Kajian Hadir - Peserta</h1>
             </div>
             <div className="flex items-center space-x-2">
               <Button 
@@ -93,7 +140,7 @@ export function AuthForm() {
                 className="text-xs text-gray-500 hover:text-gray-700"
                 size="sm"
               >
-                Admin
+                Admin Login
               </Button>
               <Button 
                 variant="ghost" 
@@ -112,13 +159,13 @@ export function AuthForm() {
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-xl sm:text-2xl">
-              {isLogin ? 'Masuk ke Akun' : 'Daftar Akun Baru'}
+            <CardTitle className="text-xl sm:text-2xl text-blue-600">
+              {isLogin ? 'Masuk Peserta' : 'Daftar Peserta'}
             </CardTitle>
             <CardDescription className="text-sm sm:text-base">
               {isLogin 
-                ? 'Masuk dengan email dan password Anda' 
-                : 'Buat akun baru untuk menggunakan sistem absensi kajian'
+                ? 'Masuk dengan akun peserta Anda' 
+                : 'Daftar sebagai peserta kajian'
               }
             </CardDescription>
           </CardHeader>
@@ -177,18 +224,17 @@ export function AuthForm() {
               {!isLogin && (
                 <div className="bg-blue-50 p-3 rounded-lg">
                   <p className="text-xs sm:text-sm text-blue-800">
-                    <strong>Info:</strong> Akun baru akan mendapat role "Peserta" secara default. 
-                    Untuk akses admin, gunakan pendaftaran admin terpisah.
+                    <strong>Info:</strong> Akun ini akan mendapat role "Peserta" untuk mengikuti kajian.
                   </p>
                 </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 {loading 
-                  ? 'Loading...' 
+                  ? 'Processing...' 
                   : isLogin 
                     ? 'Masuk' 
-                    : 'Daftar'
+                    : 'Daftar sebagai Peserta'
                 }
               </Button>
               
@@ -205,21 +251,18 @@ export function AuthForm() {
                   }
                 </Button>
               </div>
-            </form>
 
-            {/* Demo accounts info - Only for login */}
-            {isLogin && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">Demo Accounts:</h4>
-                <div className="text-xs sm:text-sm text-gray-600 space-y-1">
-                  <p><strong>Admin:</strong> admin@kajian.com / admin123</p>
-                  <p><strong>Peserta:</strong> peserta@kajian.com / peserta123</p>
-                  <p className="text-orange-600 mt-2">
-                    <strong>Note:</strong> Demo accounts akan dibuat otomatis saat pertama kali digunakan.
-                  </p>
-                </div>
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => navigate('/admin/register')}
+                  className="text-red-600 text-sm"
+                >
+                  Daftar sebagai Admin
+                </Button>
               </div>
-            )}
+            </form>
           </CardContent>
         </Card>
       </div>

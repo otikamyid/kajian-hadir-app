@@ -84,9 +84,6 @@ function AppContent() {
             )
           } />
           
-          {/* Legacy dashboard route - redirect to appropriate dashboard */}
-          <Route path="/dashboard" element={<Navigate to={getDashboardRoute()} replace />} />
-          
           <Route path="/sessions" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
@@ -123,9 +120,8 @@ function AppContent() {
       ) : (
         /* Redirect to auth if not logged in and trying to access protected routes */
         <>
-          <Route path="/admin/dashboard" element={<Navigate to="/auth" replace />} />
+          <Route path="/admin/dashboard" element={<Navigate to="/admin/auth" replace />} />
           <Route path="/participant/dashboard" element={<Navigate to="/auth" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/auth" replace />} />
           <Route path="/sessions" element={<Navigate to="/auth" replace />} />
           <Route path="/scan" element={<Navigate to="/auth" replace />} />
           <Route path="/participants" element={<Navigate to="/auth" replace />} />

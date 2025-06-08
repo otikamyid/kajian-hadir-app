@@ -13,8 +13,6 @@ import { useNavigate } from 'react-router-dom';
 export default function AdminRegister() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [adminCode, setAdminCode] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -35,19 +33,10 @@ export default function AdminRegister() {
       return;
     }
 
-    if (!name || !phone) {
-      toast({
-        title: "Error",
-        description: "Nama dan nomor telepon harus diisi",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
-      console.log('Creating admin account with:', { email, name, phone });
+      console.log('Creating admin account with:', { email });
       
       // Sign up process
       const { error } = await signUp(email, password);
@@ -62,7 +51,7 @@ export default function AdminRegister() {
 
       toast({
         title: "Processing",
-        description: "Akun admin berhasil dibuat! Sedang mengatur profil...",
+        description: "Akun admin berhasil dibuat! Sedang mengatur profil admin...",
       });
 
       // Wait for user creation and create admin profile
@@ -171,30 +160,6 @@ export default function AdminRegister() {
                 <p className="text-xs text-gray-600">
                   Gunakan kode: <strong>ADMIN2024</strong>
                 </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="name">Nama Lengkap Admin</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Masukkan nama lengkap"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone">Nomor WhatsApp</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="contoh: +628123456789"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
               </div>
               
               <div className="space-y-2">

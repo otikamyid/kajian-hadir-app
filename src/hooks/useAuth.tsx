@@ -61,7 +61,7 @@ export function useAuth() {
       }
     };
 
-    // Set up auth state listener first
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
@@ -71,7 +71,6 @@ export function useAuth() {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Use setTimeout to prevent infinite loops
         if (session?.user) {
           setTimeout(() => {
             if (mounted) {
@@ -88,7 +87,6 @@ export function useAuth() {
       }
     );
 
-    // Then get initial session
     getInitialSession();
 
     return () => {
@@ -155,8 +153,6 @@ export function useAuth() {
       }
       
       console.log('Admin profile created successfully:', profileData);
-      
-      // Update local state immediately
       setProfile(profileData);
       
       return { success: true, profile: profileData };
@@ -166,43 +162,37 @@ export function useAuth() {
     }
   };
 
-  const createParticipantProfile = async (userId: string, email: string, name: string, phone: string, role: 'admin' | 'participant' = 'participant') => {
+  const createParticipantProfile = async (userId: string, email: string, name: string, phone: string) => {
     try {
-      console.log('Creating participant profile:', { userId, email, name, phone, role });
+      console.log('Creating participant profile:', { userId, email, name, phone });
       
-      let participantId = null;
-      
-      // Only create participant entry for participant role
-      if (role === 'participant') {
-        console.log('Creating participant entry for participant role');
-        const { data: participant, error: participantError } = await supabase
-          .from('participants')
-          .insert({
-            name: name,
-            email: email,
-            phone: phone,
-            qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
-          })
-          .select()
-          .single();
+      // Create participant entry
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
+        .insert({
+          name: name,
+          email: email,
+          phone: phone,
+          qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
+        })
+        .select()
+        .single();
 
-        if (participantError) {
-          console.error('Error creating participant:', participantError);
-          throw participantError;
-        }
-        
-        console.log('Participant created:', participant);
-        participantId = participant.id;
+      if (participantError) {
+        console.error('Error creating participant:', participantError);
+        throw participantError;
       }
+      
+      console.log('Participant created:', participant);
 
-      // Create/update profile with correct role
+      // Create profile with participant role
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: role,
-          participant_id: participantId
+          role: 'participant',
+          participant_id: participant.id
         }, {
           onConflict: 'id'
         })
@@ -214,9 +204,7 @@ export function useAuth() {
         throw profileError;
       }
       
-      console.log('Profile created/updated successfully:', profileData);
-      
-      // Update local state immediately
+      console.log('Participant profile created successfully:', profileData);
       setProfile(profileData);
       
       return { success: true, profile: profileData };
