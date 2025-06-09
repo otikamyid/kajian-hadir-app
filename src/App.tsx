@@ -24,7 +24,7 @@ const queryClient = new QueryClient();
 function AppContent() {
   const { user, profile, loading } = useAuth();
 
-  console.log('App render state:', { user: !!user, profile, loading });
+  console.log('App render state:', { user: !!user, profile: profile, loading });
 
   if (loading) {
     return (
@@ -37,11 +37,13 @@ function AppContent() {
     );
   }
 
-  // Helper function to determine the correct dashboard route
+  // Helper function untuk redirect yang BENAR berdasarkan role
   const getDashboardRoute = () => {
+    console.log('Getting dashboard route for role:', profile?.role);
     if (profile?.role === 'admin') {
       return '/admin/dashboard';
     }
+    // Default ke participant dashboard
     return '/participant/dashboard';
   };
 
@@ -56,12 +58,12 @@ function AppContent() {
       {/* Protected routes */}
       {user ? (
         <>
-          {/* Admin Dashboard */}
+          {/* Admin Dashboard - hanya untuk admin */}
           <Route path="/admin/dashboard" element={
             profile?.role === 'admin' ? (
               <div className="min-h-screen bg-gray-50">
                 <Navbar />
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                   <AdminDashboard />
                 </main>
               </div>
@@ -70,12 +72,12 @@ function AppContent() {
             )
           } />
           
-          {/* Participant Dashboard */}
+          {/* Participant Dashboard - hanya untuk participant */}
           <Route path="/participant/dashboard" element={
             profile?.role === 'participant' ? (
               <div className="min-h-screen bg-gray-50">
                 <Navbar />
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                   <ParticipantDashboard />
                 </main>
               </div>
@@ -87,7 +89,7 @@ function AppContent() {
           <Route path="/sessions" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <Sessions />
               </main>
             </div>
@@ -95,7 +97,7 @@ function AppContent() {
           <Route path="/scan" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <ScanQR />
               </main>
             </div>
@@ -103,7 +105,7 @@ function AppContent() {
           <Route path="/participants" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <Participants />
               </main>
             </div>
@@ -111,7 +113,7 @@ function AppContent() {
           <Route path="/profile/edit" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <ProfileEdit />
               </main>
             </div>

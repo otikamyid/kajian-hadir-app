@@ -134,12 +134,13 @@ export function useAuth() {
     try {
       console.log('Creating admin profile:', { userId, email });
       
+      // PENTING: Pastikan role adalah 'admin'
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: 'admin',
+          role: 'admin', // PASTI admin
           participant_id: null
         }, {
           onConflict: 'id'
@@ -152,7 +153,7 @@ export function useAuth() {
         throw profileError;
       }
       
-      console.log('Admin profile created successfully:', profileData);
+      console.log('Admin profile created successfully with role:', profileData.role);
       setProfile(profileData);
       
       return { success: true, profile: profileData };
@@ -166,7 +167,7 @@ export function useAuth() {
     try {
       console.log('Creating participant profile:', { userId, email, name, phone });
       
-      // Create participant entry
+      // Create participant entry first
       const { data: participant, error: participantError } = await supabase
         .from('participants')
         .insert({
@@ -185,13 +186,13 @@ export function useAuth() {
       
       console.log('Participant created:', participant);
 
-      // Create profile with participant role
+      // PENTING: Pastikan role adalah 'participant'
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: 'participant',
+          role: 'participant', // PASTI participant
           participant_id: participant.id
         }, {
           onConflict: 'id'
@@ -204,7 +205,7 @@ export function useAuth() {
         throw profileError;
       }
       
-      console.log('Participant profile created successfully:', profileData);
+      console.log('Participant profile created successfully with role:', profileData.role);
       setProfile(profileData);
       
       return { success: true, profile: profileData };
