@@ -25,30 +25,54 @@ export function CreateParticipantForm({ onParticipantCreated, onCancel }: Create
     setLoading(true);
 
     try {
-      const qrCode = `QR_${email.replace('@', '_').replace('.', '_')}_${Date.now()}`;
+      console.log('Creating participant invitation for:', { name, email, phone });
+
+      // Generate unique token
+      const token = crypto.randomUUID();
       
-      const { error } = await supabase
-        .from('participants')
+      // Create invitation record
+      const { error: invitationError } = await supabase
+        .from('participant_invitations')
         .insert({
           name,
           email,
           phone,
-          qr_code: qrCode,
+          token,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
         });
 
-      if (error) throw error;
+      if (invitationError) {
+        console.error('Error creating invitation:', invitationError);
+        throw invitationError;
+      }
+
+      // Send invitation email via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          email,
+          name,
+          phone,
+          token,
+          invitedBy: (await supabase.auth.getUser()).data.user?.email,
+        },
+      });
+
+      if (emailError) {
+        console.error('Error sending invitation:', emailError);
+        throw emailError;
+      }
 
       toast({
         title: "Berhasil",
-        description: "Peserta berhasil ditambahkan",
+        description: `Undangan berhasil dikirim ke ${email}. Peserta akan menerima email untuk membuat akun.`,
       });
 
       onParticipantCreated();
     } catch (error: any) {
-      console.error('Error creating participant:', error);
+      console.error('Error creating participant invitation:', error);
       toast({
         title: "Error",
-        description: `Gagal menambahkan peserta: ${error.message}`,
+        description: `Gagal mengirim undangan: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -61,7 +85,7 @@ export function CreateParticipantForm({ onParticipantCreated, onCancel }: Create
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <UserPlus className="h-5 w-5" />
-          <span>Tambah Peserta</span>
+          <span>Undang Peserta Baru</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -103,7 +127,7 @@ export function CreateParticipantForm({ onParticipantCreated, onCancel }: Create
 
           <div className="flex space-x-3 pt-4">
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? 'Menambahkan...' : 'Tambah Peserta'}
+              {loading ? 'Mengirim Undangan...' : 'Kirim Undangan'}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
               Batal

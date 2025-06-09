@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { CreateSessionForm } from '@/components/CreateSessionForm';
+import { EditSessionForm } from '@/components/EditSessionForm';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, MapPin, Users, Trash2, Edit } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type KajianSession = Tables<'kajian_sessions'>;
@@ -17,6 +18,7 @@ export default function Sessions() {
   const [sessions, setSessions] = useState<KajianSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingSession, setEditingSession] = useState<KajianSession | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -133,6 +135,21 @@ export default function Sessions() {
     );
   }
 
+  if (editingSession) {
+    return (
+      <div className="space-y-6">
+        <EditSessionForm
+          session={editingSession}
+          onSessionUpdated={() => {
+            setEditingSession(null);
+            fetchSessions();
+          }}
+          onCancel={() => setEditingSession(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -172,8 +189,17 @@ export default function Sessions() {
                       <div className="flex space-x-1">
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant={session.is_active ? "destructive" : "default"}
                           onClick={() => toggleSessionActive(session.id, session.is_active)}
+                          title={session.is_active ? "Nonaktifkan session" : "Aktifkan session"}
+                        >
+                          {session.is_active ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingSession(session)}
+                          title="Edit session"
                         >
                           <Edit className="h-3 w-3" />
                         </Button>
@@ -181,6 +207,7 @@ export default function Sessions() {
                           size="sm"
                           variant="destructive"
                           onClick={() => deleteSession(session.id)}
+                          title="Hapus session"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

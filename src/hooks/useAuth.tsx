@@ -215,6 +215,76 @@ export function useAuth() {
     }
   };
 
+  const createParticipantFromInvitation = async (userId: string, email: string, invitationToken: string) => {
+    try {
+      console.log('Creating participant from invitation:', { userId, email, invitationToken });
+      
+      // Get invitation details
+      const { data: invitation, error: invitationError } = await supabase
+        .from('participant_invitations')
+        .select('*')
+        .eq('token', invitationToken)
+        .eq('email', email)
+        .eq('used', false)
+        .maybeSingle();
+
+      if (invitationError || !invitation) {
+        console.error('Invalid or expired invitation:', invitationError);
+        throw new Error('Invalid or expired invitation');
+      }
+
+      // Create participant entry
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
+        .insert({
+          name: invitation.name,
+          email: invitation.email,
+          phone: invitation.phone,
+          qr_code: `QR_${invitation.email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
+        })
+        .select()
+        .single();
+
+      if (participantError) {
+        console.error('Error creating participant:', participantError);
+        throw participantError;
+      }
+
+      // Create profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ 
+          id: userId,
+          email: invitation.email,
+          role: 'participant',
+          participant_id: participant.id
+        }, {
+          onConflict: 'id'
+        })
+        .select()
+        .single();
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        throw profileError;
+      }
+
+      // Mark invitation as used
+      await supabase
+        .from('participant_invitations')
+        .update({ used: true })
+        .eq('id', invitation.id);
+
+      console.log('Participant profile created from invitation:', profileData);
+      setProfile(profileData);
+      
+      return { success: true, profile: profileData };
+    } catch (error) {
+      console.error('Error in createParticipantFromInvitation:', error);
+      return { error };
+    }
+  };
+
   const updateParticipant = async (participantId: string, name: string, phone: string) => {
     try {
       console.log('Updating participant:', { participantId, name, phone });
@@ -263,6 +333,7 @@ export function useAuth() {
     signOut,
     createAdminProfile,
     createParticipantProfile,
+    createParticipantFromInvitation,
     updateParticipant,
   };
 }

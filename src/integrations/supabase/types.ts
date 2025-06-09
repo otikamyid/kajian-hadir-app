@@ -102,6 +102,42 @@ export type Database = {
         }
         Relationships: []
       }
+      participant_invitations: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          name: string
+          phone: string | null
+          token: string
+          used: boolean
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          token: string
+          used?: boolean
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          token?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
       participants: {
         Row: {
           blacklist_reason: string | null
