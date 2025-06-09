@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
+import { CreateSessionForm } from '@/components/CreateSessionForm';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, MapPin, Users } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type KajianSession = Tables<'kajian_sessions'>;
@@ -15,6 +16,7 @@ export default function Sessions() {
   const { user, profile } = useAuth();
   const [sessions, setSessions] = useState<KajianSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,7 +29,6 @@ export default function Sessions() {
     try {
       console.log('Fetching sessions...');
       
-      // Simplified query without complex joins that might cause RLS issues
       const { data, error } = await supabase
         .from('kajian_sessions')
         .select('*')
@@ -52,46 +53,55 @@ export default function Sessions() {
     }
   };
 
-  const createSampleSession = async () => {
-    if (profile?.role !== 'admin') {
-      toast({
-        title: "Access Denied",
-        description: "Only admins can create sessions",
-        variant: "destructive",
-      });
+  const deleteSession = async (sessionId: string) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus session ini?')) {
       return;
     }
 
     try {
-      console.log('Creating sample session...');
       const { error } = await supabase
         .from('kajian_sessions')
-        .insert({
-          title: 'Weekly Kajian',
-          description: 'Regular weekly Islamic study session',
-          date: new Date().toISOString().split('T')[0],
-          start_time: '19:00',
-          end_time: '21:00',
-          location: 'Main Hall',
-          max_participants: 50,
-        });
+        .delete()
+        .eq('id', sessionId);
 
-      if (error) {
-        console.error('Error creating session:', error);
-        throw error;
-      }
-      
+      if (error) throw error;
+
       toast({
-        title: "Success",
-        description: "Sample session created successfully",
+        title: "Berhasil",
+        description: "Session kajian berhasil dihapus",
       });
-      
+
       fetchSessions();
     } catch (error: any) {
-      console.error('Error creating session:', error);
+      console.error('Error deleting session:', error);
       toast({
         title: "Error",
-        description: `Failed to create session: ${error.message || 'Unknown error'}`,
+        description: `Gagal menghapus session: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleSessionActive = async (sessionId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('kajian_sessions')
+        .update({ is_active: !currentStatus })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Berhasil",
+        description: `Session ${!currentStatus ? 'diaktifkan' : 'dinonaktifkan'}`,
+      });
+
+      fetchSessions();
+    } catch (error: any) {
+      console.error('Error updating session:', error);
+      toast({
+        title: "Error",
+        description: `Gagal mengupdate session: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -109,14 +119,28 @@ export default function Sessions() {
     );
   }
 
+  if (showCreateForm) {
+    return (
+      <div className="space-y-6">
+        <CreateSessionForm
+          onSessionCreated={() => {
+            setShowCreateForm(false);
+            fetchSessions();
+          }}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Kajian Sessions</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <h1 className="text-2xl sm:text-3xl font-bold">Sesi Kajian</h1>
         {profile?.role === 'admin' && (
-          <Button onClick={createSampleSession}>
+          <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
-            Create Sample Session
+            Buat Session Baru
           </Button>
         )}
       </div>
@@ -126,29 +150,49 @@ export default function Sessions() {
           <CardContent className="pt-6">
             <div className="text-center">
               <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">No sessions found</p>
+              <p className="text-gray-500">Belum ada session kajian</p>
               {profile?.role === 'admin' && (
-                <p className="text-sm text-gray-400 mt-2">Create your first session to get started</p>
+                <p className="text-sm text-gray-400 mt-2">Buat session pertama untuk memulai</p>
               )}
             </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {sessions.map((session) => (
             <Card key={session.id}>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  {session.title}
-                  <div className={`px-2 py-1 rounded text-sm ${session.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {session.is_active ? 'Active' : 'Inactive'}
+                <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+                  <span className="text-lg sm:text-xl">{session.title}</span>
+                  <div className="flex items-center space-x-2">
+                    <div className={`px-2 py-1 rounded text-sm ${session.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {session.is_active ? 'Aktif' : 'Tidak Aktif'}
+                    </div>
+                    {profile?.role === 'admin' && (
+                      <div className="flex space-x-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleSessionActive(session.id, session.is_active)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteSession(session.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-gray-600">{session.description}</p>
+                <p className="text-gray-600 text-sm sm:text-base">{session.description}</p>
                 
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0 text-sm text-gray-500">
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
                     {session.date}
@@ -168,7 +212,7 @@ export default function Sessions() {
                 {session.max_participants && (
                   <div className="flex items-center text-sm text-gray-500">
                     <Users className="h-4 w-4 mr-1" />
-                    Max {session.max_participants} participants
+                    Maks {session.max_participants} peserta
                   </div>
                 )}
 
@@ -176,7 +220,7 @@ export default function Sessions() {
                   <QRCodeGenerator 
                     value={session.id} 
                     title="Session QR Code"
-                    size={150}
+                    size={120}
                   />
                 </div>
               </CardContent>
