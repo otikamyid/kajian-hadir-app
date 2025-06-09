@@ -35,6 +35,7 @@ export default function AdminAuth() {
     setLoading(true);
 
     try {
+      console.log('Attempting admin login with:', email);
       const { error } = await signIn(email, password);
       if (error) {
         toast({
@@ -43,10 +44,16 @@ export default function AdminAuth() {
           variant: "destructive",
         });
       } else {
+        console.log('Admin login berhasil, menunggu redirect...');
         toast({
           title: "Success",
           description: "Login admin berhasil!",
         });
+        
+        // Force redirect ke admin dashboard
+        setTimeout(() => {
+          navigate('/admin/dashboard');
+        }, 1000);
       }
     } catch (error) {
       toast({

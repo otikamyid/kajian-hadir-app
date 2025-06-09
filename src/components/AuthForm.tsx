@@ -28,7 +28,7 @@ export function AuthForm() {
     if (!isLogin && (!name || !phone)) {
       toast({
         title: "Error",
-        description: "Nama dan nomor telepon harus diisi",
+        description: "Semua field harus diisi",
         variant: "destructive",
       });
       return;
@@ -38,6 +38,7 @@ export function AuthForm() {
 
     try {
       if (isLogin) {
+        console.log('Attempting participant login with:', email);
         const { error } = await signIn(email, password);
         if (error) {
           toast({
@@ -46,12 +47,20 @@ export function AuthForm() {
             variant: "destructive",
           });
         } else {
+          console.log('Login berhasil, menunggu redirect...');
           toast({
             title: "Success",
             description: "Login berhasil! Selamat datang di Kajian Hadir.",
           });
+          
+          // Force redirect setelah login berhasil
+          setTimeout(() => {
+            navigate('/participant/dashboard');
+          }, 1000);
         }
       } else {
+        console.log('Attempting participant signup with:', { email, name, phone });
+        
         // Sign up untuk participant
         const { error } = await signUp(email, password);
         if (error) {
@@ -70,7 +79,7 @@ export function AuthForm() {
 
         // Wait and create participant profile
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 15;
         
         const checkAndCreateProfile = async () => {
           const { data: { user } } = await supabase.auth.getUser();
@@ -84,21 +93,24 @@ export function AuthForm() {
               console.error('Error creating participant profile:', result.error);
               toast({
                 title: "Error",
-                description: "Gagal membuat profil peserta",
+                description: "Gagal membuat profil peserta: " + result.error.message,
                 variant: "destructive",
               });
             } else {
+              console.log('Participant profile created successfully');
               toast({
                 title: "Success",
                 description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
               });
               
+              // Force redirect ke participant dashboard
               setTimeout(() => {
                 navigate('/participant/dashboard');
-              }, 1000);
+              }, 1500);
             }
           } else if (attempts < maxAttempts) {
             attempts++;
+            console.log('Retrying profile creation, attempt:', attempts);
             setTimeout(checkAndCreateProfile, 1000);
           } else {
             toast({
@@ -184,17 +196,6 @@ export function AuthForm() {
                       required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Nomor WhatsApp</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="contoh: +628123456789"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                  </div>
                 </>
               )}
               
@@ -209,6 +210,21 @@ export function AuthForm() {
                   required
                 />
               </div>
+
+              {!isLogin && (
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Nomor WhatsApp</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="contoh: +628123456789"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -249,17 +265,6 @@ export function AuthForm() {
                     ? 'Belum punya akun? Daftar di sini' 
                     : 'Sudah punya akun? Masuk di sini'
                   }
-                </Button>
-              </div>
-
-              <div className="text-center">
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={() => navigate('/admin/register')}
-                  className="text-red-600 text-sm"
-                >
-                  Daftar sebagai Admin
                 </Button>
               </div>
             </form>

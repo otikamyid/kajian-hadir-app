@@ -56,7 +56,7 @@ export default function AdminRegister() {
 
       // Wait for user creation and create admin profile
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 15;
       
       const checkAndCreateProfile = async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -70,23 +70,24 @@ export default function AdminRegister() {
             console.error('Error creating admin profile:', result.error);
             toast({
               title: "Error",
-              description: "Gagal membuat profil admin",
+              description: "Gagal membuat profil admin: " + result.error.message,
               variant: "destructive",
             });
           } else {
-            console.log('Admin profile created successfully');
+            console.log('Admin profile created successfully with role:', result.profile?.role);
             toast({
               title: "Success",
               description: "Akun admin berhasil dibuat! Anda akan diarahkan ke dashboard admin.",
             });
             
-            // Navigate to admin dashboard
+            // Force redirect to admin dashboard
             setTimeout(() => {
               navigate('/admin/dashboard');
-            }, 1000);
+            }, 1500);
           }
         } else if (attempts < maxAttempts) {
           attempts++;
+          console.log('Retrying admin profile creation, attempt:', attempts);
           setTimeout(checkAndCreateProfile, 1000);
         } else {
           toast({
@@ -196,17 +197,6 @@ export default function AdminRegister() {
               <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
                 {loading ? 'Membuat Akun...' : 'Daftar sebagai Admin'}
               </Button>
-              
-              <div className="text-center">
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={() => navigate('/auth')}
-                  className="text-red-600 text-sm sm:text-base"
-                >
-                  Daftar sebagai peserta biasa
-                </Button>
-              </div>
             </form>
           </CardContent>
         </Card>
