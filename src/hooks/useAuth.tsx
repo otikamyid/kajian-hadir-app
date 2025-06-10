@@ -216,69 +216,80 @@ export function useAuth() {
   };
 
   const createParticipantFromInvitation = async (userId: string, email: string, invitationToken: string) => {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout: Proses registrasi terlalu lama')), 30000);
+    });
+
     try {
       console.log('Creating participant from invitation:', { userId, email, invitationToken });
       
-      // Get invitation details
-      const { data: invitation, error: invitationError } = await supabase
-        .from('participant_invitations')
-        .select('*')
-        .eq('token', invitationToken)
-        .eq('email', email)
-        .eq('used', false)
-        .maybeSingle();
+      const registrationPromise = (async () => {
+        // Get invitation details
+        const { data: invitation, error: invitationError } = await supabase
+          .from('participant_invitations')
+          .select('*')
+          .eq('token', invitationToken)
+          .eq('email', email)
+          .eq('used', false)
+          .maybeSingle();
 
-      if (invitationError || !invitation) {
-        console.error('Invalid or expired invitation:', invitationError);
-        throw new Error('Invalid or expired invitation');
-      }
+        if (invitationError || !invitation) {
+          console.error('Invalid or expired invitation:', invitationError);
+          throw new Error('Invalid or expired invitation');
+        }
 
-      // Create participant entry
-      const { data: participant, error: participantError } = await supabase
-        .from('participants')
-        .insert({
-          name: invitation.name,
-          email: invitation.email,
-          phone: invitation.phone,
-          qr_code: `QR_${invitation.email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
-        })
-        .select()
-        .single();
+        // Create participant entry
+        const { data: participant, error: participantError } = await supabase
+          .from('participants')
+          .insert({
+            name: invitation.name,
+            email: invitation.email,
+            phone: invitation.phone,
+            qr_code: `QR_${invitation.email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
+          })
+          .select()
+          .single();
 
-      if (participantError) {
-        console.error('Error creating participant:', participantError);
-        throw participantError;
-      }
+        if (participantError) {
+          console.error('Error creating participant:', participantError);
+          throw participantError;
+        }
 
-      // Create profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: userId,
-          email: invitation.email,
-          role: 'participant',
-          participant_id: participant.id
-        }, {
-          onConflict: 'id'
-        })
-        .select()
-        .single();
+        console.log('Participant created from invitation:', participant);
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        throw profileError;
-      }
+        // Create profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .upsert({ 
+            id: userId,
+            email: invitation.email,
+            role: 'participant',
+            participant_id: participant.id
+          }, {
+            onConflict: 'id'
+          })
+          .select()
+          .single();
 
-      // Mark invitation as used
-      await supabase
-        .from('participant_invitations')
-        .update({ used: true })
-        .eq('id', invitation.id);
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          throw profileError;
+        }
 
-      console.log('Participant profile created from invitation:', profileData);
-      setProfile(profileData);
-      
-      return { success: true, profile: profileData };
+        // Mark invitation as used
+        await supabase
+          .from('participant_invitations')
+          .update({ used: true })
+          .eq('id', invitation.id);
+
+        console.log('Participant profile created from invitation:', profileData);
+        setProfile(profileData);
+        
+        return { success: true, profile: profileData };
+      })();
+
+      const result = await Promise.race([registrationPromise, timeoutPromise]);
+      return result;
     } catch (error) {
       console.error('Error in createParticipantFromInvitation:', error);
       return { error };

@@ -2,12 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { QRScanner } from '@/components/QRScanner';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { QrCode, Camera, Users, AlertCircle } from 'lucide-react';
+import { QrCode, Camera, Users, AlertCircle, Clock, CheckCircle } from 'lucide-react';
 
 export default function ScanQR() {
   const { profile } = useAuth();
@@ -16,6 +17,9 @@ export default function ScanQR() {
   const [isScanning, setIsScanning] = useState(false);
   const [participantData, setParticipantData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string>('');
+  const [checkingIn, setCheckingIn] = useState(false);
   const { toast } = useToast();
 
   // Fetch participant data for QR code generation (only for participants)
@@ -24,6 +28,35 @@ export default function ScanQR() {
       fetchParticipantData();
     }
   }, [profile]);
+
+  // Fetch active sessions for admin
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      fetchActiveSessions();
+    }
+  }, [profile]);
+
+  const fetchActiveSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('kajian_sessions')
+        .select('*')
+        .eq('is_active', true)
+        .order('date', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching active sessions:', error);
+        return;
+      }
+      
+      setActiveSessions(data || []);
+      if (data && data.length > 0) {
+        setSelectedSession(data[0].id);
+      }
+    } catch (error) {
+      console.error('Error in fetchActiveSessions:', error);
+    }
+  };
 
   const fetchParticipantData = async () => {
     if (!profile?.email) return;
@@ -49,6 +82,72 @@ export default function ScanQR() {
       console.error('Error in fetchParticipantData:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCheckIn = async (participantId: string) => {
+    if (!selectedSession) {
+      toast({
+        title: "Error",
+        description: "Pilih session yang aktif terlebih dahulu.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCheckingIn(true);
+    try {
+      // Check if already checked in
+      const { data: existingAttendance, error: checkError } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('participant_id', participantId)
+        .eq('session_id', selectedSession)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing attendance:', checkError);
+        throw checkError;
+      }
+
+      if (existingAttendance) {
+        toast({
+          title: "Sudah Check-in",
+          description: "Peserta sudah melakukan check-in untuk session ini.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Record attendance
+      const { error: attendanceError } = await supabase
+        .from('attendance')
+        .insert({
+          participant_id: participantId,
+          session_id: selectedSession,
+          check_in_time: new Date().toISOString(),
+          status: 'present'
+        });
+
+      if (attendanceError) {
+        console.error('Error recording attendance:', attendanceError);
+        throw attendanceError;
+      }
+
+      toast({
+        title: "Check-in Berhasil",
+        description: `${participantInfo.name} berhasil check-in ke session.`,
+      });
+
+    } catch (error: any) {
+      console.error('Error during check-in:', error);
+      toast({
+        title: "Error",
+        description: `Gagal melakukan check-in: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingIn(false);
     }
   };
 
@@ -113,6 +212,31 @@ export default function ScanQR() {
           </p>
         </div>
 
+        {/* Session Selection */}
+        {activeSessions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center text-lg">
+                <Clock className="h-5 w-5 mr-2" />
+                Pilih Session Aktif
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <select 
+                value={selectedSession} 
+                onChange={(e) => setSelectedSession(e.target.value)}
+                className="w-full p-2 border rounded-md"
+              >
+                {activeSessions.map((session) => (
+                  <option key={session.id} value={session.id}>
+                    {session.title} - {session.date} ({session.start_time} - {session.end_time})
+                  </option>
+                ))}
+              </select>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* QR Scanner */}
           <Card>
@@ -170,11 +294,31 @@ export default function ScanQR() {
                     )}
                   </div>
 
-                  {participantInfo.is_blacklisted && (
+                  {participantInfo.is_blacklisted ? (
                     <div className="bg-red-50 border border-red-200 p-3 rounded-lg">
                       <p className="text-red-800 text-sm font-medium">
                         ⚠️ Peserta ini tidak dapat melakukan check-in karena diblokir.
                       </p>
+                    </div>
+                  ) : (
+                    <div className="pt-4">
+                      <Button 
+                        onClick={() => handleCheckIn(participantInfo.id)}
+                        disabled={checkingIn || !selectedSession}
+                        className="w-full"
+                      >
+                        {checkingIn ? (
+                          <>
+                            <Clock className="h-4 w-4 mr-2 animate-spin" />
+                            Memproses Check-in...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Check-in Peserta
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
                 </div>

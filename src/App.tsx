@@ -110,6 +110,14 @@ function AppContent() {
               </main>
             </div>
           } />
+          <Route path="/attendance" element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+                <AttendanceHistory />
+              </main>
+            </div>
+          } />
           <Route path="/profile/edit" element={
             <div className="min-h-screen bg-gray-50">
               <Navbar />
@@ -127,6 +135,7 @@ function AppContent() {
           <Route path="/sessions" element={<Navigate to="/auth" replace />} />
           <Route path="/scan" element={<Navigate to="/auth" replace />} />
           <Route path="/participants" element={<Navigate to="/auth" replace />} />
+          <Route path="/attendance" element={<Navigate to="/auth" replace />} />
           <Route path="/profile/edit" element={<Navigate to="/auth" replace />} />
         </>
       )}

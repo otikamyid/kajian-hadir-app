@@ -35,77 +35,82 @@ export default function AdminRegister() {
 
     setLoading(true);
 
+    // Set timeout untuk registrasi
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Timeout: Registrasi terlalu lama')), 30000);
+    });
+
     try {
       console.log('Creating admin account with:', { email });
       
-      // Sign up process
-      const { error } = await signUp(email, password);
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "Processing",
-        description: "Akun admin berhasil dibuat! Sedang mengatur profil admin...",
-      });
-
-      // Wait for user creation and create admin profile
-      let attempts = 0;
-      const maxAttempts = 15;
-      
-      const checkAndCreateProfile = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user && attempts < maxAttempts) {
-          console.log('User found, creating admin profile:', user.id);
-          
-          const result = await createAdminProfile(user.id, email);
-          
-          if (result.error) {
-            console.error('Error creating admin profile:', result.error);
-            toast({
-              title: "Error",
-              description: "Gagal membuat profil admin: " + result.error.message,
-              variant: "destructive",
-            });
-          } else {
-            console.log('Admin profile created successfully with role:', result.profile?.role);
-            toast({
-              title: "Success",
-              description: "Akun admin berhasil dibuat! Anda akan diarahkan ke dashboard admin.",
-            });
-            
-            // Force redirect to admin dashboard
-            setTimeout(() => {
-              navigate('/admin/dashboard');
-            }, 1500);
-          }
-        } else if (attempts < maxAttempts) {
-          attempts++;
-          console.log('Retrying admin profile creation, attempt:', attempts);
-          setTimeout(checkAndCreateProfile, 1000);
-        } else {
+      const registrationPromise = (async () => {
+        // Sign up process
+        const { error } = await signUp(email, password);
+        if (error) {
           toast({
             title: "Error",
-            description: "Timeout saat membuat profil admin",
+            description: error.message,
             variant: "destructive",
           });
+          return;
         }
-      };
 
-      // Start checking for user
-      setTimeout(checkAndCreateProfile, 2000);
+        toast({
+          title: "Processing",
+          description: "Akun admin berhasil dibuat! Sedang mengatur profil admin...",
+        });
+
+        // Wait for user creation and create admin profile
+        let attempts = 0;
+        const maxAttempts = 15;
+        
+        const checkAndCreateProfile = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user && attempts < maxAttempts) {
+            console.log('User found, creating admin profile:', user.id);
+            
+            const result = await createAdminProfile(user.id, email);
+            
+            if (result.error) {
+              console.error('Error creating admin profile:', result.error);
+              toast({
+                title: "Error",
+                description: "Gagal membuat profil admin: " + result.error.message,
+                variant: "destructive",
+              });
+            } else {
+              console.log('Admin profile created successfully with role:', result.profile?.role);
+              toast({
+                title: "Success",
+                description: "Akun admin berhasil dibuat! Anda akan diarahkan ke dashboard admin.",
+              });
+              
+              // Force redirect to admin dashboard
+              setTimeout(() => {
+                navigate('/admin/dashboard');
+              }, 1500);
+            }
+          } else if (attempts < maxAttempts) {
+            attempts++;
+            console.log('Retrying admin profile creation, attempt:', attempts);
+            setTimeout(checkAndCreateProfile, 1000);
+          } else {
+            throw new Error('Timeout saat membuat profil admin');
+          }
+        };
+
+        // Start checking for user
+        setTimeout(checkAndCreateProfile, 2000);
+      })();
+
+      await Promise.race([registrationPromise, timeoutPromise]);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in admin registration:', error);
       toast({
         title: "Error",
-        description: "Terjadi kesalahan. Silakan coba lagi.",
+        description: error.message || "Terjadi kesalahan. Silakan coba lagi.",
         variant: "destructive",
       });
     } finally {
@@ -193,6 +198,14 @@ export default function AdminRegister() {
                   untuk mengelola sesi kajian, peserta, dan sistem absensi.
                 </p>
               </div>
+
+              {loading && (
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <p className="text-xs sm:text-sm text-blue-800">
+                    <strong>Sedang memproses...</strong> Mohon tunggu hingga proses selesai (max 30 detik)
+                  </p>
+                </div>
+              )}
 
               <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
                 {loading ? 'Membuat Akun...' : 'Daftar sebagai Admin'}
