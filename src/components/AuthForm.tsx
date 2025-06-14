@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -62,8 +61,8 @@ export function AuthForm() {
         console.log('=== Starting participant registration ===');
         console.log('Registration data:', { email, name, phone });
         
-        // Step 1: Sign up user
-        const { error: signUpError } = await signUp(email, password);
+        // Step 1: Sign up user and immediately get the user data
+        const { error: signUpError, user } = await signUp(email, password);
         if (signUpError) {
           console.error('Sign up error:', signUpError);
           toast({
@@ -74,73 +73,43 @@ export function AuthForm() {
           return;
         }
 
-        console.log('✓ User signup successful');
+        if (!user) {
+          toast({
+            title: "Error",
+            description: "Gagal membuat akun. Silakan coba lagi.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        console.log('✓ User signup successful, user ID:', user.id);
         
         toast({
           title: "Processing",
           description: "Akun berhasil dibuat! Sedang mengatur profil peserta...",
         });
 
-        // Step 2: Wait for user to be properly authenticated and create participant profile
-        const createProfileWithRetry = async () => {
-          let attempts = 0;
-          const maxAttempts = 20; // Increased attempts
-          
-          while (attempts < maxAttempts) {
-            attempts++;
-            console.log(`Attempt ${attempts}/${maxAttempts}: Checking user authentication...`);
-            
-            try {
-              // Get current authenticated user
-              const { data: { user }, error: userError } = await supabase.auth.getUser();
-              
-              if (userError) {
-                console.error('Error getting user:', userError);
-                throw userError;
-              }
-              
-              if (user) {
-                console.log('✓ User authenticated, creating participant profile...');
-                console.log('User ID:', user.id);
-                
-                // Create participant profile
-                const result = await createParticipantProfile(user.id, email, name, phone);
-                
-                if (result.error) {
-                  console.error('Error creating participant profile:', result.error);
-                  throw new Error(result.error.message || 'Failed to create participant profile');
-                } else {
-                  console.log('✓ Participant profile created successfully');
-                  toast({
-                    title: "Success",
-                    description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
-                  });
-                  
-                  // Redirect to participant dashboard
-                  setTimeout(() => {
-                    navigate('/participant/dashboard');
-                  }, 1500);
-                  return true; // Success
-                }
-              } else {
-                console.log(`User not yet authenticated on attempt ${attempts}, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-              }
-            } catch (error) {
-              console.error(`Error on attempt ${attempts}:`, error);
-              if (attempts === maxAttempts) {
-                throw error; // Throw on final attempt
-              }
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
-            }
-          }
-          
-          throw new Error('Timeout: User authentication took too long');
-        };
-
-        // Start the profile creation process
+        // Step 2: Create participant profile immediately with the user ID
         try {
-          await createProfileWithRetry();
+          console.log('Creating participant profile with user ID:', user.id);
+          
+          const result = await createParticipantProfile(user.id, email, name, phone);
+          
+          if (result.error) {
+            console.error('Error creating participant profile:', result.error);
+            throw new Error(result.error.message || 'Failed to create participant profile');
+          } else {
+            console.log('✓ Participant profile created successfully');
+            toast({
+              title: "Success",
+              description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
+            });
+            
+            // Redirect to participant dashboard
+            setTimeout(() => {
+              navigate('/participant/dashboard');
+            }, 1500);
+          }
         } catch (error: any) {
           console.error('Final error in profile creation:', error);
           toast({

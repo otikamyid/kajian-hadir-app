@@ -28,11 +28,6 @@ export function useAuth() {
           
         if (error) {
           console.error('Error fetching profile:', error);
-          // If RLS blocks access, try to create profile
-          if (error.code === 'PGRST116' || error.message.includes('row-level security')) {
-            console.log('Profile not accessible due to RLS, might need to create one');
-            return;
-          }
           return;
         }
         
@@ -133,14 +128,13 @@ export function useAuth() {
     }
     
     console.log('Sign up success:', data);
-    return { error };
+    return { error, user: data.user };
   };
 
   const createAdminProfile = async (userId: string, email: string) => {
     try {
       console.log('Creating admin profile:', { userId, email });
       
-      // Use upsert with bypass RLS by using service role approach
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
@@ -174,15 +168,8 @@ export function useAuth() {
     try {
       console.log('=== Starting participant profile creation ===');
       console.log('Input data:', { userId, email, name, phone });
-      
-      // First verify user exists and is authenticated
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser || currentUser.id !== userId) {
-        throw new Error('User not properly authenticated');
-      }
-      console.log('✓ User authentication verified');
 
-      // Step 1: Create participant entry
+      // Step 1: Create participant entry first
       console.log('Step 1: Creating participant entry...');
       const participantData = {
         name: name.trim(),
@@ -206,12 +193,12 @@ export function useAuth() {
       
       console.log('✓ Participant created successfully:', participant);
 
-      // Step 2: Create/update profile with participant_id
+      // Step 2: Create profile with participant_id
       console.log('Step 2: Creating profile with participant_id:', participant.id);
       const profileData = {
         id: userId,
         email: email.toLowerCase().trim(),
-        role: 'participant',
+        role: 'participant' as const,
         participant_id: participant.id
       };
       
