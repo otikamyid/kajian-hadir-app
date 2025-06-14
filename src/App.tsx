@@ -17,6 +17,7 @@ import Participants from "./pages/Participants";
 import ProfileEdit from "./pages/ProfileEdit";
 import AdminAuth from "./pages/AdminAuth";
 import AdminRegister from "./pages/AdminRegister";
+import AttendanceHistory from "./pages/AttendanceHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
