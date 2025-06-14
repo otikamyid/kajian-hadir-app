@@ -2,7 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LandingPage from '@/pages/LandingPage';
-import Index from '@/pages/Index';
+import Auth from '@/pages/Auth';
 import AdminAuth from '@/pages/AdminAuth';
 import AdminRegister from '@/pages/AdminRegister';
 import AdminDashboard from '@/pages/AdminDashboard';
@@ -37,7 +37,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/admin/auth" element={<AdminAuth />} />
         <Route path="/admin/register" element={<AdminRegister />} />
         
