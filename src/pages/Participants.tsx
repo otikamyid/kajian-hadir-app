@@ -4,12 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CreateParticipantForm } from '@/components/CreateParticipantForm';
 import { ParticipantAttendanceHistory } from '@/components/ParticipantAttendanceHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Search, Users, UserCheck, UserX, History, Eye } from 'lucide-react';
+import { Plus, Search, Users, UserCheck, UserX, History, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Participant = Tables<'participants'>;
@@ -21,6 +31,9 @@ export default function Participants() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewingHistoryParticipant, setViewingHistoryParticipant] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [participantToDelete, setParticipantToDelete] = useState<Participant | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +95,71 @@ export default function Participants() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleDeleteParticipant = async () => {
+    if (!participantToDelete) return;
+
+    setDeleting(true);
+    try {
+      console.log('Deleting participant and related data:', participantToDelete.id);
+
+      // First delete related attendance records
+      const { error: attendanceError } = await supabase
+        .from('attendance')
+        .delete()
+        .eq('participant_id', participantToDelete.id);
+
+      if (attendanceError) {
+        console.error('Error deleting attendance records:', attendanceError);
+        throw attendanceError;
+      }
+
+      // Delete related profile if exists
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('participant_id', participantToDelete.id);
+
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        // Don't throw here as profile might not exist
+      }
+
+      // Finally delete the participant
+      const { error: participantError } = await supabase
+        .from('participants')
+        .delete()
+        .eq('id', participantToDelete.id);
+
+      if (participantError) {
+        console.error('Error deleting participant:', participantError);
+        throw participantError;
+      }
+
+      toast({
+        title: "Berhasil",
+        description: `Peserta ${participantToDelete.name} berhasil dihapus`,
+      });
+
+      fetchParticipants();
+      setDeleteDialogOpen(false);
+      setParticipantToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting participant:', error);
+      toast({
+        title: "Error",
+        description: `Gagal menghapus peserta: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (participant: Participant) => {
+    setParticipantToDelete(participant);
+    setDeleteDialogOpen(true);
   };
 
   const filteredParticipants = participants.filter(participant =>
@@ -260,6 +338,15 @@ export default function Participants() {
                         </>
                       )}
                     </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openDeleteDialog(participant)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Hapus
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -267,6 +354,37 @@ export default function Participants() {
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Konfirmasi Hapus Peserta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus peserta <strong>{participantToDelete?.name}</strong>?
+              <br /><br />
+              Tindakan ini akan menghapus:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Data peserta</li>
+                <li>Riwayat kehadiran peserta</li>
+                <li>Akun pengguna terkait (jika ada)</li>
+              </ul>
+              <br />
+              <strong>Tindakan ini tidak dapat dibatalkan.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteParticipant}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Menghapus...' : 'Hapus Peserta'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
