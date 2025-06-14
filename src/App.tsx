@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LandingPage from '@/pages/LandingPage';
-import Index from '@/pages/Auth';
+import Index from '@/pages/Index';
 import AdminAuth from '@/pages/AdminAuth';
 import AdminRegister from '@/pages/AdminRegister';
 import AdminDashboard from '@/pages/AdminDashboard';

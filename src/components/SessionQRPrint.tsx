@@ -72,7 +72,7 @@ export function SessionQRPrint({ session, onClose }: SessionQRPrintProps) {
         </Button>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @media print {
           .no-print {
             display: none !important;
