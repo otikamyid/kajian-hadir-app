@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, ArrowLeft } from 'lucide-react';
+import { Calendar, ArrowLeft, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function AuthForm() {
@@ -16,10 +17,37 @@ export function AuthForm() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   
   const { signIn, signUp, createParticipantProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const getErrorMessage = (error: any) => {
+    if (!error?.message) return "Terjadi kesalahan. Silakan coba lagi.";
+    
+    const errorMessage = error.message.toLowerCase();
+    
+    if (errorMessage.includes('invalid login credentials') || 
+        errorMessage.includes('invalid email or password') ||
+        errorMessage.includes('email not confirmed')) {
+      return "Email atau password yang Anda masukkan salah. Silakan periksa kembali.";
+    }
+    
+    if (errorMessage.includes('user already registered')) {
+      return "Email ini sudah terdaftar. Silakan gunakan email lain atau coba masuk.";
+    }
+    
+    if (errorMessage.includes('email already exists')) {
+      return "Email ini sudah terdaftar. Silakan gunakan email lain atau coba masuk.";
+    }
+    
+    if (errorMessage.includes('password should be at least')) {
+      return "Password minimal 6 karakter. Silakan gunakan password yang lebih panjang.";
+    }
+    
+    return error.message;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,14 +69,14 @@ export function AuthForm() {
         const { error } = await signIn(email, password);
         if (error) {
           toast({
-            title: "Error",
-            description: error.message,
+            title: "Gagal Masuk",
+            description: getErrorMessage(error),
             variant: "destructive",
           });
         } else {
           console.log('Login berhasil, menunggu redirect...');
           toast({
-            title: "Success",
+            title: "Berhasil",
             description: "Login berhasil! Selamat datang di Kajian Hadir.",
           });
           
@@ -66,8 +94,8 @@ export function AuthForm() {
         if (signUpError) {
           console.error('Sign up error:', signUpError);
           toast({
-            title: "Error",
-            description: signUpError.message,
+            title: "Gagal Mendaftar",
+            description: getErrorMessage(signUpError),
             variant: "destructive",
           });
           return;
@@ -84,9 +112,12 @@ export function AuthForm() {
 
         console.log('✓ User signup successful, user ID:', user.id);
         
+        // Show email confirmation message
+        setShowEmailConfirmation(true);
+        
         toast({
-          title: "Processing",
-          description: "Akun berhasil dibuat! Sedang mengatur profil peserta...",
+          title: "Pendaftaran Berhasil!",
+          description: "Akun berhasil dibuat! Silakan cek email Anda untuk konfirmasi.",
         });
 
         // Step 2: Create participant profile immediately with the user ID
@@ -100,21 +131,20 @@ export function AuthForm() {
             throw new Error(result.error.message || 'Failed to create participant profile');
           } else {
             console.log('✓ Participant profile created successfully');
-            toast({
-              title: "Success",
-              description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
-            });
             
-            // Redirect to participant dashboard
+            // Additional success message for profile creation
             setTimeout(() => {
-              navigate('/participant/dashboard');
-            }, 1500);
+              toast({
+                title: "Profil Tersimpan",
+                description: "Profil peserta berhasil dibuat. Anda dapat login setelah mengkonfirmasi email.",
+              });
+            }, 2000);
           }
         } catch (error: any) {
           console.error('Final error in profile creation:', error);
           toast({
-            title: "Error",
-            description: `Gagal membuat profil peserta: ${error.message}`,
+            title: "Peringatan",
+            description: `Akun berhasil dibuat namun ada masalah dengan profil: ${error.message}`,
             variant: "destructive",
           });
         }
@@ -178,6 +208,17 @@ export function AuthForm() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Email Confirmation Alert */}
+            {!isLogin && showEmailConfirmation && (
+              <Alert className="mb-4 border-green-200 bg-green-50">
+                <Mail className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  <strong>Cek Email Anda!</strong><br />
+                  Kami telah mengirim link konfirmasi ke email Anda. Silakan klik link tersebut untuk mengaktifkan akun, kemudian Anda dapat login.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <>
@@ -262,7 +303,10 @@ export function AuthForm() {
                 <Button
                   type="button"
                   variant="link"
-                  onClick={() => setIsLogin(!isLogin)}
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setShowEmailConfirmation(false);
+                  }}
                   className="text-blue-600 text-sm sm:text-base"
                   disabled={loading}
                 >
