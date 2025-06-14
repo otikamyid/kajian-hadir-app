@@ -170,38 +170,54 @@ export function useAuth() {
 
   const createParticipantProfile = async (userId: string, email: string, name: string, phone: string) => {
     try {
-      console.log('Creating participant profile:', { userId, email, name, phone });
+      console.log('=== Starting participant profile creation ===');
+      console.log('Input data:', { userId, email, name, phone });
       
-      // Step 1: Create participant entry first
+      // First verify user exists and is authenticated
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser || currentUser.id !== userId) {
+        throw new Error('User not properly authenticated');
+      }
+      console.log('✓ User authentication verified');
+
+      // Step 1: Create participant entry
       console.log('Step 1: Creating participant entry...');
+      const participantData = {
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone.trim(),
+        qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
+      };
+      
+      console.log('Participant data to insert:', participantData);
+      
       const { data: participant, error: participantError } = await supabase
         .from('participants')
-        .insert({
-          name: name,
-          email: email,
-          phone: phone,
-          qr_code: `QR_${email.replace('@', '_').replace('.', '_')}_${userId.substring(0, 8)}`
-        })
+        .insert(participantData)
         .select()
         .single();
 
       if (participantError) {
-        console.error('Error creating participant:', participantError);
+        console.error('❌ Error creating participant:', participantError);
         throw new Error(`Failed to create participant: ${participantError.message}`);
       }
       
-      console.log('Participant created successfully:', participant);
+      console.log('✓ Participant created successfully:', participant);
 
-      // Step 2: Create or update profile with participant_id
-      console.log('Step 2: Creating/updating profile with participant_id:', participant.id);
-      const { data: profileData, error: profileError } = await supabase
+      // Step 2: Create/update profile with participant_id
+      console.log('Step 2: Creating profile with participant_id:', participant.id);
+      const profileData = {
+        id: userId,
+        email: email.toLowerCase().trim(),
+        role: 'participant',
+        participant_id: participant.id
+      };
+      
+      console.log('Profile data to upsert:', profileData);
+      
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .upsert({ 
-          id: userId,
-          email: email,
-          role: 'participant',
-          participant_id: participant.id
-        }, {
+        .upsert(profileData, {
           onConflict: 'id',
           ignoreDuplicates: false
         })
@@ -209,18 +225,27 @@ export function useAuth() {
         .single();
 
       if (profileError) {
-        console.error('Error creating/updating profile:', profileError);
-        // If profile creation fails, try to delete the participant to maintain consistency
+        console.error('❌ Error creating profile:', profileError);
+        // Cleanup: delete participant if profile creation fails
+        console.log('Cleaning up participant due to profile error...');
         await supabase.from('participants').delete().eq('id', participant.id);
         throw new Error(`Failed to create profile: ${profileError.message}`);
       }
       
-      console.log('Participant profile created successfully:', profileData);
-      setProfile(profileData);
+      console.log('✓ Profile created successfully:', profile);
+      console.log('=== Participant profile creation completed successfully ===');
       
-      return { success: true, profile: profileData, participant: participant };
+      // Update local state
+      setProfile(profile);
+      
+      return { 
+        success: true, 
+        profile: profile, 
+        participant: participant 
+      };
+      
     } catch (error) {
-      console.error('Error in createParticipantProfile:', error);
+      console.error('❌ Error in createParticipantProfile:', error);
       return { error };
     }
   };

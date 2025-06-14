@@ -59,69 +59,96 @@ export function AuthForm() {
           }, 1000);
         }
       } else {
-        console.log('Attempting participant signup with:', { email, name, phone });
+        console.log('=== Starting participant registration ===');
+        console.log('Registration data:', { email, name, phone });
         
-        // Sign up untuk participant
-        const { error } = await signUp(email, password);
-        if (error) {
+        // Step 1: Sign up user
+        const { error: signUpError } = await signUp(email, password);
+        if (signUpError) {
+          console.error('Sign up error:', signUpError);
           toast({
             title: "Error",
-            description: error.message,
+            description: signUpError.message,
             variant: "destructive",
           });
           return;
         }
 
+        console.log('✓ User signup successful');
+        
         toast({
           title: "Processing",
           description: "Akun berhasil dibuat! Sedang mengatur profil peserta...",
         });
 
-        // Wait and create participant profile
-        let attempts = 0;
-        const maxAttempts = 15;
-        
-        const checkAndCreateProfile = async () => {
-          const { data: { user } } = await supabase.auth.getUser();
+        // Step 2: Wait for user to be properly authenticated and create participant profile
+        const createProfileWithRetry = async () => {
+          let attempts = 0;
+          const maxAttempts = 20; // Increased attempts
           
-          if (user && attempts < maxAttempts) {
-            console.log('User found, creating participant profile:', user.id);
-            
-            const result = await createParticipantProfile(user.id, email, name, phone);
-            
-            if (result.error) {
-              console.error('Error creating participant profile:', result.error);
-              toast({
-                title: "Error",
-                description: "Gagal membuat profil peserta: " + result.error.message,
-                variant: "destructive",
-              });
-            } else {
-              console.log('Participant profile created successfully');
-              toast({
-                title: "Success",
-                description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
-              });
-              
-              // Force redirect ke participant dashboard
-              setTimeout(() => {
-                navigate('/participant/dashboard');
-              }, 1500);
-            }
-          } else if (attempts < maxAttempts) {
+          while (attempts < maxAttempts) {
             attempts++;
-            console.log('Retrying profile creation, attempt:', attempts);
-            setTimeout(checkAndCreateProfile, 1000);
-          } else {
-            toast({
-              title: "Error",
-              description: "Timeout saat membuat profil peserta",
-              variant: "destructive",
-            });
+            console.log(`Attempt ${attempts}/${maxAttempts}: Checking user authentication...`);
+            
+            try {
+              // Get current authenticated user
+              const { data: { user }, error: userError } = await supabase.auth.getUser();
+              
+              if (userError) {
+                console.error('Error getting user:', userError);
+                throw userError;
+              }
+              
+              if (user) {
+                console.log('✓ User authenticated, creating participant profile...');
+                console.log('User ID:', user.id);
+                
+                // Create participant profile
+                const result = await createParticipantProfile(user.id, email, name, phone);
+                
+                if (result.error) {
+                  console.error('Error creating participant profile:', result.error);
+                  throw new Error(result.error.message || 'Failed to create participant profile');
+                } else {
+                  console.log('✓ Participant profile created successfully');
+                  toast({
+                    title: "Success",
+                    description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
+                  });
+                  
+                  // Redirect to participant dashboard
+                  setTimeout(() => {
+                    navigate('/participant/dashboard');
+                  }, 1500);
+                  return true; // Success
+                }
+              } else {
+                console.log(`User not yet authenticated on attempt ${attempts}, retrying...`);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+              }
+            } catch (error) {
+              console.error(`Error on attempt ${attempts}:`, error);
+              if (attempts === maxAttempts) {
+                throw error; // Throw on final attempt
+              }
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+            }
           }
+          
+          throw new Error('Timeout: User authentication took too long');
         };
 
-        setTimeout(checkAndCreateProfile, 2000);
+        // Start the profile creation process
+        try {
+          await createProfileWithRetry();
+        } catch (error: any) {
+          console.error('Final error in profile creation:', error);
+          toast({
+            title: "Error",
+            description: `Gagal membuat profil peserta: ${error.message}`,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -245,9 +272,17 @@ export function AuthForm() {
                 </div>
               )}
 
+              {loading && (
+                <div className="bg-yellow-50 p-3 rounded-lg">
+                  <p className="text-xs sm:text-sm text-yellow-800">
+                    <strong>Sedang memproses...</strong> {isLogin ? 'Melakukan login...' : 'Membuat akun dan profil peserta...'}
+                  </p>
+                </div>
+              )}
+
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                 {loading 
-                  ? 'Processing...' 
+                  ? (isLogin ? 'Logging in...' : 'Creating Account...') 
                   : isLogin 
                     ? 'Masuk' 
                     : 'Daftar sebagai Peserta'
@@ -260,6 +295,7 @@ export function AuthForm() {
                   variant="link"
                   onClick={() => setIsLogin(!isLogin)}
                   className="text-blue-600 text-sm sm:text-base"
+                  disabled={loading}
                 >
                   {isLogin 
                     ? 'Belum punya akun? Daftar di sini' 
