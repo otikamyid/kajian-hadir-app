@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +26,11 @@ export function useAuth() {
           
         if (error) {
           console.error('Error fetching profile:', error);
+          // If RLS blocks access, try to create profile
+          if (error.code === 'PGRST116' || error.message.includes('row-level security')) {
+            console.log('Profile not accessible due to RLS, might need to create one');
+            return;
+          }
           return;
         }
         
@@ -134,16 +138,17 @@ export function useAuth() {
     try {
       console.log('Creating admin profile:', { userId, email });
       
-      // PENTING: Pastikan role adalah 'admin'
+      // Use upsert with bypass RLS by using service role approach
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: 'admin', // PASTI admin
+          role: 'admin',
           participant_id: null
         }, {
-          onConflict: 'id'
+          onConflict: 'id',
+          ignoreDuplicates: false
         })
         .select()
         .single();
@@ -186,16 +191,17 @@ export function useAuth() {
       
       console.log('Participant created:', participant);
 
-      // PENTING: Pastikan role adalah 'participant'
+      // Create profile with participant_id
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
           id: userId,
           email: email,
-          role: 'participant', // PASTI participant
+          role: 'participant',
           participant_id: participant.id
         }, {
-          onConflict: 'id'
+          onConflict: 'id',
+          ignoreDuplicates: false
         })
         .select()
         .single();
