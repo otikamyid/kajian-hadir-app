@@ -25,54 +25,100 @@ export function CreateParticipantForm({ onParticipantCreated, onCancel }: Create
     setLoading(true);
 
     try {
-      console.log('Creating participant invitation for:', { name, email, phone });
+      console.log('Creating participant directly:', { name, email, phone });
 
-      // Generate unique token
-      const token = crypto.randomUUID();
+      // Generate temporary password and QR code
+      const tempPassword = crypto.randomUUID().substring(0, 12);
+      const qrCode = `QR_${email.replace('@', '_').replace('.', '_')}_${Date.now()}`;
       
-      // Create invitation record
-      const { error: invitationError } = await supabase
-        .from('participant_invitations')
+      // Step 1: Create user account in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: email.toLowerCase().trim(),
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          name: name.trim(),
+          phone: phone.trim()
+        }
+      });
+
+      if (authError || !authData.user) {
+        console.error('Error creating auth user:', authError);
+        throw new Error(`Gagal membuat akun: ${authError?.message || 'Unknown error'}`);
+      }
+
+      console.log('Auth user created:', authData.user.id);
+
+      // Step 2: Create participant record
+      const { data: participant, error: participantError } = await supabase
+        .from('participants')
         .insert({
-          name,
-          email,
-          phone,
-          token,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          phone: phone.trim(),
+          qr_code: qrCode
+        })
+        .select()
+        .single();
+
+      if (participantError) {
+        console.error('Error creating participant:', participantError);
+        // Cleanup: delete auth user if participant creation fails
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        throw new Error(`Gagal membuat data peserta: ${participantError.message}`);
+      }
+
+      console.log('Participant created:', participant);
+
+      // Step 3: Create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          email: email.toLowerCase().trim(),
+          role: 'participant',
+          participant_id: participant.id
         });
 
-      if (invitationError) {
-        console.error('Error creating invitation:', invitationError);
-        throw invitationError;
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Cleanup: delete participant and auth user
+        await supabase.from('participants').delete().eq('id', participant.id);
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        throw new Error(`Gagal membuat profil: ${profileError.message}`);
       }
 
-      // Send invitation email via edge function
-      const { error: emailError } = await supabase.functions.invoke('send-invitation', {
-        body: {
-          email,
-          name,
-          phone,
-          token,
-          invitedBy: (await supabase.auth.getUser()).data.user?.email,
-        },
-      });
+      console.log('Profile created successfully');
 
-      if (emailError) {
-        console.error('Error sending invitation:', emailError);
-        throw emailError;
+      // Step 4: Send password reset email
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email.toLowerCase().trim(),
+        {
+          redirectTo: `${window.location.origin}/auth?message=set_password`
+        }
+      );
+
+      if (resetError) {
+        console.error('Error sending reset email:', resetError);
+        // Don't throw error here - participant is created, just notify admin
+        toast({
+          title: "Peserta Berhasil Dibuat",
+          description: `${name} berhasil didaftarkan, namun email gagal dikirim. Anda dapat mengirim ulang undangan nanti.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Berhasil",
+          description: `${name} berhasil didaftarkan! Email untuk set password telah dikirim ke ${email}.`,
+        });
       }
-
-      toast({
-        title: "Berhasil",
-        description: `Undangan berhasil dikirim ke ${email}. Peserta akan menerima email untuk membuat akun.`,
-      });
 
       onParticipantCreated();
     } catch (error: any) {
-      console.error('Error creating participant invitation:', error);
+      console.error('Error in participant creation:', error);
       toast({
         title: "Error",
-        description: `Gagal mengirim undangan: ${error.message}`,
+        description: error.message || "Gagal mendaftarkan peserta",
         variant: "destructive",
       });
     } finally {
@@ -85,7 +131,7 @@ export function CreateParticipantForm({ onParticipantCreated, onCancel }: Create
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <UserPlus className="h-5 w-5" />
-          <span>Undang Peserta Baru</span>
+          <span>Daftarkan Peserta Baru</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -125,9 +171,15 @@ export function CreateParticipantForm({ onParticipantCreated, onCancel }: Create
             />
           </div>
 
+          <div className="bg-blue-50 p-3 rounded-lg text-sm">
+            <p className="text-blue-800">
+              <strong>Info:</strong> Peserta akan menerima email untuk membuat password dan bisa langsung login.
+            </p>
+          </div>
+
           <div className="flex space-x-3 pt-4">
             <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? 'Mengirim Undangan...' : 'Kirim Undangan'}
+              {loading ? 'Mendaftarkan...' : 'Daftarkan Peserta'}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
               Batal

@@ -1,34 +1,105 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Mail, Lock, User, Phone, Eye, EyeOff, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Calendar, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 export function AuthForm() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
   
-  const { signIn, signUp, createParticipantProfile } = useAuth();
-  const { toast } = useToast();
+  const { signIn, signUp, createParticipantProfile, createParticipantFromInvitation, user, profile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Check for special messages in URL params
+  const message = searchParams.get('message');
+  const invitationToken = searchParams.get('invitation_token');
+
+  useEffect(() => {
+    if (user && profile) {
+      const dashboardRoute = profile.role === 'admin' ? '/admin/dashboard' : '/participant/dashboard';
+      navigate(dashboardRoute);
+    }
+  }, [user, profile, navigate]);
+
+  useEffect(() => {
+    if (message === 'set_password') {
+      setActiveTab('login');
+      toast({
+        title: "Set Password",
+        description: "Silakan login dengan email Anda dan password baru yang telah Anda buat.",
+      });
+    }
+  }, [message, toast]);
+
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isLogin && (!name || !phone)) {
+    setLoading(true);
+
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        let errorMessage = 'Gagal masuk';
+        
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Email atau password salah';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Email belum dikonfirmasi. Periksa email Anda.';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'Terlalu banyak percobaan. Coba lagi nanti.';
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Sign in error:', error);
       toast({
         title: "Error",
-        description: "Semua field harus diisi",
+        description: "Terjadi kesalahan saat masuk",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Password tidak cocok",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Error", 
+        description: "Password minimal 6 karakter",
         variant: "destructive",
       });
       return;
@@ -37,124 +108,59 @@ export function AuthForm() {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        console.log('Attempting participant login with:', email);
-        const { error } = await signIn(email, password);
+      if (invitationToken) {
+        console.log('Processing invitation signup with token:', invitationToken);
+        
+        const { error } = await signUp(email, password);
+        
         if (error) {
-          toast({
-            title: "Error",
-            description: error.message,
-            variant: "destructive",
-          });
-        } else {
-          console.log('Login berhasil, menunggu redirect...');
-          toast({
-            title: "Success",
-            description: "Login berhasil! Selamat datang di Kajian Hadir.",
-          });
-          
-          // Force redirect setelah login berhasil
-          setTimeout(() => {
-            navigate('/participant/dashboard');
-          }, 1000);
-        }
-      } else {
-        console.log('=== Starting participant registration ===');
-        console.log('Registration data:', { email, name, phone });
-        
-        // Step 1: Sign up user
-        const { error: signUpError } = await signUp(email, password);
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          toast({
-            title: "Error",
-            description: signUpError.message,
-            variant: "destructive",
-          });
-          return;
+          throw error;
         }
 
-        console.log('✓ User signup successful');
-        
         toast({
-          title: "Processing",
-          description: "Akun berhasil dibuat! Sedang mengatur profil peserta...",
+          title: "Berhasil",
+          description: "Akun berhasil dibuat dari undangan! Silakan cek email untuk konfirmasi.",
         });
-
-        // Step 2: Wait for user to be properly authenticated and create participant profile
-        const createProfileWithRetry = async () => {
-          let attempts = 0;
-          const maxAttempts = 20; // Increased attempts
-          
-          while (attempts < maxAttempts) {
-            attempts++;
-            console.log(`Attempt ${attempts}/${maxAttempts}: Checking user authentication...`);
-            
-            try {
-              // Get current authenticated user
-              const { data: { user }, error: userError } = await supabase.auth.getUser();
-              
-              if (userError) {
-                console.error('Error getting user:', userError);
-                throw userError;
-              }
-              
-              if (user) {
-                console.log('✓ User authenticated, creating participant profile...');
-                console.log('User ID:', user.id);
-                
-                // Create participant profile
-                const result = await createParticipantProfile(user.id, email, name, phone);
-                
-                if (result.error) {
-                  console.error('Error creating participant profile:', result.error);
-                  throw new Error(result.error.message || 'Failed to create participant profile');
-                } else {
-                  console.log('✓ Participant profile created successfully');
-                  toast({
-                    title: "Success",
-                    description: "Akun peserta berhasil dibuat! Anda akan diarahkan ke dashboard peserta.",
-                  });
-                  
-                  // Redirect to participant dashboard
-                  setTimeout(() => {
-                    navigate('/participant/dashboard');
-                  }, 1500);
-                  return true; // Success
-                }
-              } else {
-                console.log(`User not yet authenticated on attempt ${attempts}, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-              }
-            } catch (error) {
-              console.error(`Error on attempt ${attempts}:`, error);
-              if (attempts === maxAttempts) {
-                throw error; // Throw on final attempt
-              }
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
-            }
-          }
-          
-          throw new Error('Timeout: User authentication took too long');
-        };
-
-        // Start the profile creation process
-        try {
-          await createProfileWithRetry();
-        } catch (error: any) {
-          console.error('Final error in profile creation:', error);
-          toast({
-            title: "Error",
-            description: `Gagal membuat profil peserta: ${error.message}`,
-            variant: "destructive",
-          });
+        
+        setTimeout(() => {
+          setActiveTab('login');
+        }, 2000);
+        
+      } else {
+        console.log('Processing regular signup');
+        
+        const { error } = await signUp(email, password);
+        
+        if (error) {
+          throw error;
         }
+
+        toast({
+          title: "Berhasil",
+          description: "Akun berhasil dibuat! Silakan cek email untuk konfirmasi.",
+        });
+        
+        setTimeout(() => {
+          setActiveTab('login');
+        }, 2000);
       }
-    } catch (error) {
-      console.error('Auth error:', error);
+      
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      
+      let errorMessage = 'Gagal membuat akun';
+      
+      if (error.message.includes('User already registered')) {
+        errorMessage = 'Email sudah terdaftar. Silakan gunakan email lain atau masuk.';
+      } else if (error.message.includes('Password should be at least 6 characters')) {
+        errorMessage = 'Password minimal 6 karakter';
+      } else if (error.message.includes('Unable to validate email address')) {
+        errorMessage = 'Format email tidak valid';
+      }
+      
       toast({
         title: "Error",
-        description: "Terjadi kesalahan. Silakan coba lagi.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -163,149 +169,183 @@ export function AuthForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Kajian Hadir - Peserta</h1>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/admin/auth')}
-                className="text-xs text-gray-500 hover:text-gray-700"
-                size="sm"
-              >
-                Admin Login
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/')}
-                className="flex items-center space-x-2 text-sm sm:text-base"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Kembali</span>
-              </Button>
-            </div>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Sistem Absensi Kajian
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Masuk atau daftar untuk melanjutkan
+          </p>
         </div>
-      </header>
 
-      {/* Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl sm:text-2xl text-blue-600">
-              {isLogin ? 'Masuk Peserta' : 'Daftar Peserta'}
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base">
-              {isLogin 
-                ? 'Masuk dengan akun peserta Anda' 
-                : 'Daftar sebagai peserta kajian'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <>
+        {message === 'set_password' && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Silakan check email Anda untuk link reset password, lalu login dengan password baru.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Masuk</TabsTrigger>
+            <TabsTrigger value="register">Daftar</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="login">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Mail className="h-5 w-5" />
+                  <span>Masuk</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nama Lengkap</Label>
+                    <Label htmlFor="login-email">Email</Label>
                     <Input
-                      id="name"
-                      type="text"
-                      placeholder="Masukkan nama lengkap"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      id="login-email"
+                      type="email"
+                      placeholder="contoh@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
                   </div>
-                </>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="contoh@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
 
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Nomor WhatsApp</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="contoh: +628123456789"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Masukkan password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              
-              {!isLogin && (
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-xs sm:text-sm text-blue-800">
-                    <strong>Info:</strong> Akun ini akan mendapat role "Peserta" untuk mengikuti kajian.
-                  </p>
-                </div>
-              )}
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Masukkan password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
 
-              {loading && (
-                <div className="bg-yellow-50 p-3 rounded-lg">
-                  <p className="text-xs sm:text-sm text-yellow-800">
-                    <strong>Sedang memproses...</strong> {isLogin ? 'Melakukan login...' : 'Membuat akun dan profil peserta...'}
-                  </p>
-                </div>
-              )}
+                  <Button type="submit" disabled={loading} className="w-full">
+                    {loading ? 'Memproses...' : 'Masuk'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-                {loading 
-                  ? (isLogin ? 'Logging in...' : 'Creating Account...') 
-                  : isLogin 
-                    ? 'Masuk' 
-                    : 'Daftar sebagai Peserta'
-                }
-              </Button>
-              
-              <div className="text-center">
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-blue-600 text-sm sm:text-base"
-                  disabled={loading}
-                >
-                  {isLogin 
-                    ? 'Belum punya akun? Daftar di sini' 
-                    : 'Sudah punya akun? Masuk di sini'
-                  }
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <TabsContent value="register">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <User className="h-5 w-5" />
+                  <span>Daftar</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {invitationToken ? (
+                  <Alert className="mb-4">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Anda mendaftar melalui undangan. Silakan isi password untuk melengkapi registrasi.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert className="mb-4">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Pendaftaran terbuka untuk peserta yang sudah didaftarkan admin.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email</Label>
+                    <Input
+                      id="register-email"
+                      type="email"
+                      placeholder="contoh@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="register-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Minimal 6 karakter"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Konfirmasi Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Ulangi password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button type="submit" disabled={loading} className="w-full">
+                    {loading ? 'Memproses...' : 'Daftar'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="text-center">
+          <p className="text-sm text-gray-600">
+            Sistem Absensi Kajian - Untuk peserta terdaftar
+          </p>
+        </div>
       </div>
     </div>
   );
