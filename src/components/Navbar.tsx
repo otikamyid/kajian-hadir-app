@@ -1,7 +1,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, Users, Calendar, QrCode, BarChart, Menu } from 'lucide-react';
+import { LogOut, Users, Calendar, QrCode, BarChart, Menu, History } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -23,12 +23,14 @@ export function Navbar() {
     { path: '/sessions', label: 'Sessions', icon: Calendar },
     { path: '/scan', label: 'Scan QR', icon: QrCode },
     { path: '/participants', label: 'Participants', icon: Users },
+    { path: '/attendance', label: 'Riwayat', icon: History },
   ];
 
   const participantNavItems = [
     { path: '/participant/dashboard', label: 'Dashboard', icon: BarChart },
     { path: '/sessions', label: 'Sessions', icon: Calendar },
     { path: '/scan', label: 'QR Code Saya', icon: QrCode },
+    { path: '/attendance', label: 'Riwayat', icon: History },
   ];
 
   const navItems = isAdmin ? adminNavItems : participantNavItems;

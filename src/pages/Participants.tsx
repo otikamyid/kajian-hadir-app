@@ -2,14 +2,15 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { CreateParticipantForm } from '@/components/CreateParticipantForm';
+import { ParticipantAttendanceHistory } from '@/components/ParticipantAttendanceHistory';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
+import { Plus, Search, Users, UserCheck, UserX, History, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Users, Shield, ShieldOff, Trash2 } from 'lucide-react';
 
 type Participant = Tables<'participants'>;
 
@@ -17,29 +18,36 @@ export default function Participants() {
   const { profile } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [viewingHistoryParticipant, setViewingHistoryParticipant] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (profile?.role === 'admin') {
-      fetchParticipants();
-    }
-  }, [profile]);
+    fetchParticipants();
+  }, []);
 
   const fetchParticipants = async () => {
     try {
+      console.log('Fetching participants...');
+      
       const { data, error } = await supabase
         .from('participants')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Participants fetched successfully:', data?.length);
       setParticipants(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching participants:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch participants",
+        description: `Failed to fetch participants: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -47,73 +55,60 @@ export default function Participants() {
     }
   };
 
-  const deleteParticipant = async (participantId: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus peserta ini?')) {
+  const toggleBlacklist = async (participantId: string, currentStatus: boolean) => {
+    if (!window.confirm(`Apakah Anda yakin ingin ${currentStatus ? 'menghapus dari' : 'menambahkan ke'} blacklist?`)) {
       return;
     }
 
     try {
       const { error } = await supabase
         .from('participants')
-        .delete()
+        .update({ is_blacklisted: !currentStatus })
         .eq('id', participantId);
 
       if (error) throw error;
-      
+
       toast({
         title: "Berhasil",
-        description: "Peserta berhasil dihapus",
+        description: `Peserta ${!currentStatus ? 'ditambahkan ke' : 'dihapus dari'} blacklist`,
       });
-      
-      fetchParticipants();
-    } catch (error) {
-      console.error('Error deleting participant:', error);
-      toast({
-        title: "Error",
-        description: "Gagal menghapus peserta",
-        variant: "destructive",
-      });
-    }
-  };
 
-  const toggleBlacklist = async (participantId: string, isBlacklisted: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('participants')
-        .update({
-          is_blacklisted: !isBlacklisted,
-          blacklist_reason: !isBlacklisted ? 'Manually blacklisted by admin' : null,
-        })
-        .eq('id', participantId);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Berhasil",
-        description: `Peserta ${!isBlacklisted ? 'diblokir' : 'dibuka blokirnya'}`,
-      });
-      
       fetchParticipants();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating participant:', error);
       toast({
         title: "Error",
-        description: "Gagal mengupdate peserta",
+        description: `Gagal mengupdate peserta: ${error.message}`,
         variant: "destructive",
       });
     }
   };
 
+  const filteredParticipants = participants.filter(participant =>
+    participant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    participant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (participant.phone && participant.phone.includes(searchTerm))
+  );
+
+  // Check if user is admin
   if (profile?.role !== 'admin') {
     return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-gray-500">Access denied. Admin privileges required.</p>
+      <div className="text-center py-8">
+        <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+        <p className="text-gray-500">Anda tidak memiliki akses ke halaman ini</p>
       </div>
     );
   }
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+          <p>Loading participants...</p>
+        </div>
+      </div>
+    );
   }
 
   if (showCreateForm) {
@@ -130,6 +125,17 @@ export default function Participants() {
     );
   }
 
+  if (viewingHistoryParticipant) {
+    return (
+      <div className="space-y-6">
+        <ParticipantAttendanceHistory
+          participantId={viewingHistoryParticipant}
+          onBack={() => setViewingHistoryParticipant(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -140,80 +146,127 @@ export default function Participants() {
         </Button>
       </div>
 
-      {participants.length === 0 ? (
+      {/* Search */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Cari peserta (nama, email, atau nomor telepon)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">Belum ada peserta terdaftar</p>
-              <p className="text-sm text-gray-400 mt-2">Tambah peserta pertama untuk memulai</p>
-            </div>
+          <CardContent className="p-4 text-center">
+            <Users className="h-8 w-8 mx-auto text-blue-600 mb-2" />
+            <div className="text-2xl font-bold">{participants.length}</div>
+            <div className="text-sm text-gray-600">Total Peserta</div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-          {participants.map((participant) => (
+        <Card>
+          <CardContent className="p-4 text-center">
+            <UserCheck className="h-8 w-8 mx-auto text-green-600 mb-2" />
+            <div className="text-2xl font-bold">
+              {participants.filter(p => !p.is_blacklisted).length}
+            </div>
+            <div className="text-sm text-gray-600">Peserta Aktif</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <UserX className="h-8 w-8 mx-auto text-red-600 mb-2" />
+            <div className="text-2xl font-bold">
+              {participants.filter(p => p.is_blacklisted).length}
+            </div>
+            <div className="text-sm text-gray-600">Blacklisted</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Participants List */}
+      <div className="space-y-4">
+        {filteredParticipants.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-500">
+                {searchTerm ? 'Tidak ada peserta yang ditemukan' : 'Belum ada peserta terdaftar'}
+              </p>
+              {!searchTerm && (
+                <p className="text-sm text-gray-400 mt-2">Mulai dengan menambahkan peserta pertama</p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          filteredParticipants.map((participant) => (
             <Card key={participant.id}>
-              <CardHeader>
-                <CardTitle className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-                  <span className="text-lg">{participant.name}</span>
-                  <div className="flex items-center space-x-2">
-                    {participant.is_blacklisted ? (
-                      <Badge variant="destructive">Diblokir</Badge>
-                    ) : (
-                      <Badge variant="secondary">Aktif</Badge>
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-medium text-lg">{participant.name}</h3>
+                      {participant.is_blacklisted ? (
+                        <Badge variant="destructive">Blacklisted</Badge>
+                      ) : (
+                        <Badge variant="secondary">Aktif</Badge>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-sm">{participant.email}</p>
+                    {participant.phone && (
+                      <p className="text-gray-600 text-sm">{participant.phone}</p>
                     )}
+                    <p className="text-gray-400 text-xs">
+                      Terdaftar: {new Date(participant.created_at).toLocaleDateString('id-ID')}
+                    </p>
+                    {participant.blacklist_reason && (
+                      <p className="text-red-600 text-sm mt-1">
+                        Alasan blacklist: {participant.blacklist_reason}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <Button
+                      variant="outline"
                       size="sm"
-                      variant="destructive"
-                      onClick={() => deleteParticipant(participant.id)}
+                      onClick={() => setViewingHistoryParticipant(participant.id)}
+                      className="w-full sm:w-auto"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <History className="h-4 w-4 mr-2" />
+                      Riwayat Kehadiran
+                    </Button>
+                    <Button
+                      variant={participant.is_blacklisted ? "default" : "destructive"}
+                      size="sm"
+                      onClick={() => toggleBlacklist(participant.id, participant.is_blacklisted)}
+                      className="w-full sm:w-auto"
+                    >
+                      {participant.is_blacklisted ? (
+                        <>
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Aktifkan
+                        </>
+                      ) : (
+                        <>
+                          <UserX className="h-4 w-4 mr-2" />
+                          Blacklist
+                        </>
+                      )}
                     </Button>
                   </div>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <p><strong>Email:</strong> {participant.email}</p>
-                  {participant.phone && <p><strong>WhatsApp:</strong> {participant.phone}</p>}
-                  <p><strong>QR Code:</strong> <span className="font-mono text-xs">{participant.qr_code}</span></p>
-                  {participant.is_blacklisted && participant.blacklist_reason && (
-                    <p className="text-red-600"><strong>Alasan:</strong> {participant.blacklist_reason}</p>
-                  )}
                 </div>
-
-                <div className="flex justify-center">
-                  <QRCodeGenerator 
-                    value={participant.qr_code || participant.id} 
-                    title="Participant QR"
-                    size={120}
-                  />
-                </div>
-
-                <Button
-                  variant={participant.is_blacklisted ? "default" : "destructive"}
-                  size="sm"
-                  className="w-full"
-                  onClick={() => toggleBlacklist(participant.id, participant.is_blacklisted || false)}
-                >
-                  {participant.is_blacklisted ? (
-                    <>
-                      <Shield className="h-4 w-4 mr-2" />
-                      Buka Blokir
-                    </>
-                  ) : (
-                    <>
-                      <ShieldOff className="h-4 w-4 mr-2" />
-                      Blokir Peserta
-                    </>
-                  )}
-                </Button>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

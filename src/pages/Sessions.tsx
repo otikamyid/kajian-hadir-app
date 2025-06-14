@@ -1,14 +1,14 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { CreateSessionForm } from '@/components/CreateSessionForm';
 import { EditSessionForm } from '@/components/EditSessionForm';
+import { SessionAttendanceMonitor } from '@/components/SessionAttendanceMonitor';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff, Monitor } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type KajianSession = Tables<'kajian_sessions'>;
@@ -19,6 +19,7 @@ export default function Sessions() {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSession, setEditingSession] = useState<KajianSession | null>(null);
+  const [monitoringSession, setMonitoringSession] = useState<KajianSession | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -150,6 +151,18 @@ export default function Sessions() {
     );
   }
 
+  if (monitoringSession) {
+    return (
+      <div className="space-y-6">
+        <SessionAttendanceMonitor
+          sessionId={monitoringSession.id}
+          sessionTitle={monitoringSession.title}
+          onClose={() => setMonitoringSession(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -187,6 +200,14 @@ export default function Sessions() {
                     </div>
                     {profile?.role === 'admin' && (
                       <div className="flex space-x-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setMonitoringSession(session)}
+                          title="Monitor kehadiran"
+                        >
+                          <Monitor className="h-3 w-3" />
+                        </Button>
                         <Button
                           size="sm"
                           variant={session.is_active ? "destructive" : "default"}
