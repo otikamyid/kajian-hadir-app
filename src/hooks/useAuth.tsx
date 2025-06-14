@@ -172,7 +172,8 @@ export function useAuth() {
     try {
       console.log('Creating participant profile:', { userId, email, name, phone });
       
-      // Create participant entry first
+      // Step 1: Create participant entry first
+      console.log('Step 1: Creating participant entry...');
       const { data: participant, error: participantError } = await supabase
         .from('participants')
         .insert({
@@ -186,12 +187,13 @@ export function useAuth() {
 
       if (participantError) {
         console.error('Error creating participant:', participantError);
-        throw participantError;
+        throw new Error(`Failed to create participant: ${participantError.message}`);
       }
       
-      console.log('Participant created:', participant);
+      console.log('Participant created successfully:', participant);
 
-      // Create profile with participant_id
+      // Step 2: Create or update profile with participant_id
+      console.log('Step 2: Creating/updating profile with participant_id:', participant.id);
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .upsert({ 
@@ -207,14 +209,16 @@ export function useAuth() {
         .single();
 
       if (profileError) {
-        console.error('Error creating profile:', profileError);
-        throw profileError;
+        console.error('Error creating/updating profile:', profileError);
+        // If profile creation fails, try to delete the participant to maintain consistency
+        await supabase.from('participants').delete().eq('id', participant.id);
+        throw new Error(`Failed to create profile: ${profileError.message}`);
       }
       
-      console.log('Participant profile created successfully with role:', profileData.role);
+      console.log('Participant profile created successfully:', profileData);
       setProfile(profileData);
       
-      return { success: true, profile: profileData };
+      return { success: true, profile: profileData, participant: participant };
     } catch (error) {
       console.error('Error in createParticipantProfile:', error);
       return { error };
