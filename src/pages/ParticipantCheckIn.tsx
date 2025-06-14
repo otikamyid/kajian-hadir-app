@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QRScanner } from '@/components/QRScanner';
@@ -12,7 +12,16 @@ export default function ParticipantCheckIn() {
   const { profile } = useAuth();
   const [isScanning, setIsScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [lateThresholdMinutes, setLateThresholdMinutes] = useState(15);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Load late threshold setting from localStorage (same as admin settings)
+    const savedThreshold = localStorage.getItem('lateThresholdMinutes');
+    if (savedThreshold) {
+      setLateThresholdMinutes(parseInt(savedThreshold));
+    }
+  }, []);
 
   const handleQRScan = async (sessionId: string) => {
     if (!profile?.participant_id) {
@@ -64,10 +73,9 @@ export default function ParticipantCheckIn() {
         return;
       }
 
-      // Calculate attendance status based on timing
+      // Calculate attendance status based on timing using current threshold setting
       const now = new Date();
       const sessionStart = new Date(`${session.date}T${session.start_time}`);
-      const lateThresholdMinutes = parseInt(localStorage.getItem('lateThresholdMinutes') || '15');
       const lateThreshold = new Date(sessionStart.getTime() + lateThresholdMinutes * 60000);
       
       let status = 'present';
@@ -156,11 +164,11 @@ export default function ParticipantCheckIn() {
           <div className="space-y-3 text-sm">
             <div className="flex items-center space-x-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <span><strong>Tepat Waktu:</strong> Check-in dalam 15 menit pertama</span>
+              <span><strong>Tepat Waktu:</strong> Check-in dalam {lateThresholdMinutes} menit pertama</span>
             </div>
             <div className="flex items-center space-x-2">
               <Clock className="h-4 w-4 text-orange-600" />
-              <span><strong>Terlambat:</strong> Check-in setelah 15 menit</span>
+              <span><strong>Terlambat:</strong> Check-in setelah {lateThresholdMinutes} menit</span>
             </div>
             <div className="flex items-center space-x-2">
               <XCircle className="h-4 w-4 text-red-600" />
