@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -286,13 +285,16 @@ export default function Sessions() {
                   </div>
                 )}
 
-                <div className="flex justify-center pt-4">
-                  <QRCodeGenerator 
-                    value={session.id} 
-                    title="Session QR Code"
-                    size={120}
-                  />
-                </div>
+                {/* Only show QR Code for admin users */}
+                {profile?.role === 'admin' && (
+                  <div className="flex justify-center pt-4">
+                    <QRCodeGenerator 
+                      value={session.id} 
+                      title="Session QR Code"
+                      size={120}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
