@@ -35,13 +35,19 @@ export function Navbar() {
 
   const navItems = isAdmin ? adminNavItems : participantNavItems;
 
+  const handleNavigation = (path: string) => {
+    console.log('Navigating to:', path);
+    navigate(path);
+    setMobileMenuOpen(false);
+  };
+
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-              Kajian {isAdmin ? 'Admin' : 'Peserta'}
+              Hadir Kajian {isAdmin ? 'Admin' : 'Peserta'}
             </h1>
             
             {/* Desktop Navigation */}
@@ -50,7 +56,7 @@ export function Navbar() {
                 <Button
                   key={path}
                   variant={location.pathname === path ? "default" : "ghost"}
-                  onClick={() => navigate(path)}
+                  onClick={() => handleNavigation(path)}
                   className="flex items-center space-x-2"
                   size="sm"
                 >
@@ -97,10 +103,7 @@ export function Navbar() {
                 <Button
                   key={path}
                   variant={location.pathname === path ? "default" : "ghost"}
-                  onClick={() => {
-                    navigate(path);
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => handleNavigation(path)}
                   className="w-full justify-start"
                   size="sm"
                 >

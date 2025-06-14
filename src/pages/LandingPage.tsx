@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const features = [
     {
@@ -41,6 +41,14 @@ export default function LandingPage() {
     'Mobile-friendly interface'
   ];
 
+  const handleDashboardClick = () => {
+    if (profile?.role === 'admin') {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/participant/dashboard');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -49,11 +57,11 @@ export default function LandingPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Kajian Hadir</h1>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Hadir Kajian</h1>
             </div>
             <div className="flex space-x-2 sm:space-x-3">
               {user ? (
-                <Button onClick={() => navigate('/dashboard')} className="text-sm sm:text-base px-3 sm:px-4">
+                <Button onClick={handleDashboardClick} className="text-sm sm:text-base px-3 sm:px-4">
                   <Shield className="h-4 w-4 mr-1 sm:mr-2" />
                   Dashboard
                 </Button>
@@ -223,13 +231,13 @@ export default function LandingPage() {
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span className="text-lg sm:text-xl font-bold">Kajian Hadir</span>
+              <span className="text-lg sm:text-xl font-bold">Hadir Kajian</span>
             </div>
             <p className="text-gray-400 text-sm sm:text-base px-4">
               Sistem Absensi Digital untuk Komunitas Muslim Modern
             </p>
             <p className="text-gray-500 text-xs sm:text-sm mt-4">
-              © 2024 Kajian Hadir. Semua hak cipta dilindungi.
+              © 2024 Hadir Kajian. Semua hak cipta dilindungi.
             </p>
           </div>
         </div>

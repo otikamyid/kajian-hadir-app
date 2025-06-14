@@ -41,10 +41,18 @@ export default function AttendanceHistory() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchAttendanceHistory();
+    if (profile) {
+      fetchAttendanceHistory();
+    }
   }, [profile]);
 
   const fetchAttendanceHistory = async () => {
+    if (!profile) {
+      console.log('No profile available, skipping fetch');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('Fetching attendance history for role:', profile?.role);
@@ -60,6 +68,7 @@ export default function AttendanceHistory() {
 
       // Jika participant, hanya tampilkan data mereka sendiri
       if (profile?.role === 'participant' && profile.participant_id) {
+        console.log('Filtering for participant:', profile.participant_id);
         query = query.eq('participant_id', profile.participant_id);
       }
 
@@ -70,7 +79,7 @@ export default function AttendanceHistory() {
         throw error;
       }
       
-      console.log('Attendance history fetched:', data);
+      console.log('Attendance history fetched successfully:', data?.length || 0, 'records');
       setAttendanceRecords(data || []);
     } catch (error: any) {
       console.error('Error in fetchAttendanceHistory:', error);
@@ -147,6 +156,17 @@ export default function AttendanceHistory() {
         <div className="text-center">
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">Riwayat Kehadiran</h1>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Riwayat Kehadiran</h1>
+          <p className="text-gray-600">Loading profile...</p>
         </div>
       </div>
     );
