@@ -1,25 +1,16 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { CreateParticipantForm } from '@/components/CreateParticipantForm';
 import { ParticipantAttendanceHistory } from '@/components/ParticipantAttendanceHistory';
+import { ParticipantStats } from '@/components/ParticipantStats';
+import { ParticipantSearch } from '@/components/ParticipantSearch';
+import { ParticipantList } from '@/components/ParticipantList';
+import { DeleteParticipantDialog } from '@/components/DeleteParticipantDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Search, Users, UserCheck, UserX, History, Trash2 } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Participant = Tables<'participants'>;
@@ -224,167 +215,28 @@ export default function Participants() {
         </Button>
       </div>
 
-      {/* Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Cari peserta (nama, email, atau nomor telepon)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <ParticipantSearch 
+        searchTerm={searchTerm} 
+        onSearchChange={setSearchTerm} 
+      />
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Users className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-            <div className="text-2xl font-bold">{participants.length}</div>
-            <div className="text-sm text-gray-600">Total Peserta</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <UserCheck className="h-8 w-8 mx-auto text-green-600 mb-2" />
-            <div className="text-2xl font-bold">
-              {participants.filter(p => !p.is_blacklisted).length}
-            </div>
-            <div className="text-sm text-gray-600">Peserta Aktif</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <UserX className="h-8 w-8 mx-auto text-red-600 mb-2" />
-            <div className="text-2xl font-bold">
-              {participants.filter(p => p.is_blacklisted).length}
-            </div>
-            <div className="text-sm text-gray-600">Blacklisted</div>
-          </CardContent>
-        </Card>
-      </div>
+      <ParticipantStats participants={participants} />
 
-      {/* Participants List */}
-      <div className="space-y-4">
-        {filteredParticipants.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">
-                {searchTerm ? 'Tidak ada peserta yang ditemukan' : 'Belum ada peserta terdaftar'}
-              </p>
-              {!searchTerm && (
-                <p className="text-sm text-gray-400 mt-2">Mulai dengan menambahkan peserta pertama</p>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          filteredParticipants.map((participant) => (
-            <Card key={participant.id}>
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <h3 className="font-medium text-lg">{participant.name}</h3>
-                      {participant.is_blacklisted ? (
-                        <Badge variant="destructive">Blacklisted</Badge>
-                      ) : (
-                        <Badge variant="secondary">Aktif</Badge>
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-sm">{participant.email}</p>
-                    {participant.phone && (
-                      <p className="text-gray-600 text-sm">{participant.phone}</p>
-                    )}
-                    <p className="text-gray-400 text-xs">
-                      Terdaftar: {new Date(participant.created_at).toLocaleDateString('id-ID')}
-                    </p>
-                    {participant.blacklist_reason && (
-                      <p className="text-red-600 text-sm mt-1">
-                        Alasan blacklist: {participant.blacklist_reason}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setViewingHistoryParticipant(participant.id)}
-                      className="w-full sm:w-auto"
-                    >
-                      <History className="h-4 w-4 mr-2" />
-                      Riwayat Kehadiran
-                    </Button>
-                    <Button
-                      variant={participant.is_blacklisted ? "default" : "destructive"}
-                      size="sm"
-                      onClick={() => toggleBlacklist(participant.id, participant.is_blacklisted)}
-                      className="w-full sm:w-auto"
-                    >
-                      {participant.is_blacklisted ? (
-                        <>
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Aktifkan
-                        </>
-                      ) : (
-                        <>
-                          <UserX className="h-4 w-4 mr-2" />
-                          Blacklist
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => openDeleteDialog(participant)}
-                      className="w-full sm:w-auto"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Hapus
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+      <ParticipantList
+        participants={filteredParticipants}
+        searchTerm={searchTerm}
+        onViewHistory={setViewingHistoryParticipant}
+        onToggleBlacklist={toggleBlacklist}
+        onDelete={openDeleteDialog}
+      />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Hapus Peserta</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus peserta <strong>{participantToDelete?.name}</strong>?
-              <br /><br />
-              Tindakan ini akan menghapus:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Data peserta</li>
-                <li>Riwayat kehadiran peserta</li>
-                <li>Akun pengguna terkait (jika ada)</li>
-              </ul>
-              <br />
-              <strong>Tindakan ini tidak dapat dibatalkan.</strong>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteParticipant}
-              disabled={deleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleting ? 'Menghapus...' : 'Hapus Peserta'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteParticipantDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        participant={participantToDelete}
+        onConfirm={handleDeleteParticipant}
+        deleting={deleting}
+      />
     </div>
   );
 }
