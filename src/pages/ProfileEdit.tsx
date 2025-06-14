@@ -24,6 +24,11 @@ export default function ProfileEdit() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Determine the correct dashboard route based on user role
+  const getDashboardRoute = () => {
+    return profile?.role === 'admin' ? '/admin/dashboard' : '/participant/dashboard';
+  };
+
   useEffect(() => {
     fetchParticipantData();
   }, [profile]);
@@ -133,9 +138,9 @@ export default function ProfileEdit() {
         description: "Profil berhasil diperbarui!",
       });
 
-      // Navigate back to dashboard after successful update
+      // Navigate back to appropriate dashboard after successful update
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate(getDashboardRoute());
       }, 1000);
 
     } catch (error: any) {
@@ -155,7 +160,7 @@ export default function ProfileEdit() {
       <div className="flex items-center space-x-4">
         <Button 
           variant="ghost" 
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate(getDashboardRoute())}
           className="flex items-center space-x-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -210,7 +215,7 @@ export default function ProfileEdit() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate(getDashboardRoute())}
                 disabled={loading}
               >
                 Batal
