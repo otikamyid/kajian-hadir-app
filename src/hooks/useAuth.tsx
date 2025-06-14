@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
+import { useNavigate } from 'react-router-dom';
 
 type Profile = Tables<'profiles'>;
 
@@ -10,6 +11,7 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -365,6 +367,8 @@ export function useAuth() {
       setUser(null);
       setSession(null);
       setProfile(null);
+      // Redirect to auth page after successful sign out
+      navigate('/auth');
     }
     return { error };
   };
