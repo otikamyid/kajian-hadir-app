@@ -24,11 +24,13 @@ export function Navbar() {
     { path: '/scan', label: 'Scan QR', icon: QrCode },
     { path: '/participants', label: 'Participants', icon: Users },
     { path: '/attendance', label: 'Riwayat', icon: History },
+    { path: '/admin/settings', label: 'Settings', icon: BarChart },
   ];
 
   const participantNavItems = [
     { path: '/participant/dashboard', label: 'Dashboard', icon: BarChart },
     { path: '/sessions', label: 'Sessions', icon: Calendar },
+    { path: '/participant/checkin', label: 'Check-in', icon: QrCode },
     { path: '/scan', label: 'QR Code Saya', icon: QrCode },
     { path: '/attendance', label: 'Riwayat', icon: History },
   ];

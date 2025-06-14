@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,10 +6,11 @@ import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { CreateSessionForm } from '@/components/CreateSessionForm';
 import { EditSessionForm } from '@/components/EditSessionForm';
 import { SessionAttendanceMonitor } from '@/components/SessionAttendanceMonitor';
+import { SessionQRPrint } from '@/components/SessionQRPrint';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff, Monitor } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff, Monitor, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type KajianSession = Tables<'kajian_sessions'>;
@@ -20,6 +22,7 @@ export default function Sessions() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSession, setEditingSession] = useState<KajianSession | null>(null);
   const [monitoringSession, setMonitoringSession] = useState<KajianSession | null>(null);
+  const [printingSession, setPrintingSession] = useState<KajianSession | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -163,6 +166,17 @@ export default function Sessions() {
     );
   }
 
+  if (printingSession) {
+    return (
+      <div className="space-y-6">
+        <SessionQRPrint
+          session={printingSession}
+          onClose={() => setPrintingSession(null)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -200,6 +214,14 @@ export default function Sessions() {
                     </div>
                     {profile?.role === 'admin' && (
                       <div className="flex space-x-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPrintingSession(session)}
+                          title="Cetak QR Code"
+                        >
+                          <Printer className="h-3 w-3" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"

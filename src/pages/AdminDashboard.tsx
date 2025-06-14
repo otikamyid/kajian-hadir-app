@@ -5,12 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileDisplay } from '@/components/ProfileDisplay';
-import { Calendar, Users, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Users, CheckCircle, XCircle, QrCode, Monitor } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 type KajianSession = Tables<'kajian_sessions'>;
 
 export default function AdminDashboard() {
   const { profile, loading } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalParticipants: 0,
@@ -67,6 +69,25 @@ export default function AdminDashboard() {
       console.error('Error fetching admin dashboard data:', error);
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'sessions':
+        navigate('/sessions');
+        break;
+      case 'participants':
+        navigate('/participants');
+        break;
+      case 'scan':
+        navigate('/scan');
+        break;
+      case 'settings':
+        navigate('/admin/settings');
+        break;
+      default:
+        console.log('Unknown action:', action);
     }
   };
 
@@ -136,6 +157,7 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* Recent Sessions */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">Sesi Terbaru</CardTitle>
@@ -162,32 +184,51 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions - Responsive Grid */}
+      {/* Quick Actions - Fixed Navigation */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">Aksi Cepat</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card 
+              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => handleQuickAction('sessions')}
+            >
               <CardContent className="pt-6 text-center">
                 <Calendar className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-blue-600" />
                 <h3 className="font-medium text-sm sm:text-base">Kelola Sesi</h3>
                 <p className="text-xs sm:text-sm text-gray-600">Buat dan atur sesi kajian</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <Card 
+              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => handleQuickAction('participants')}
+            >
               <CardContent className="pt-6 text-center">
                 <Users className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-green-600" />
                 <h3 className="font-medium text-sm sm:text-base">Kelola Peserta</h3>
                 <p className="text-xs sm:text-sm text-gray-600">Lihat dan atur peserta</p>
               </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <Card 
+              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => handleQuickAction('scan')}
+            >
               <CardContent className="pt-6 text-center">
-                <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-purple-600" />
+                <QrCode className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-purple-600" />
                 <h3 className="font-medium text-sm sm:text-base">Scan QR</h3>
                 <p className="text-xs sm:text-sm text-gray-600">Scan QR code peserta</p>
+              </CardContent>
+            </Card>
+            <Card 
+              className="cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => handleQuickAction('settings')}
+            >
+              <CardContent className="pt-6 text-center">
+                <Monitor className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-orange-600" />
+                <h3 className="font-medium text-sm sm:text-base">Pengaturan</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Atur waktu terlambat</p>
               </CardContent>
             </Card>
           </div>
