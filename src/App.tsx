@@ -1,4 +1,3 @@
-
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -10,6 +9,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { usePagePerformance, useMemoryMonitoring } from "@/hooks/usePerformance";
 import { logger } from "@/utils/logger";
+import React, { useEffect } from 'react';
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -27,19 +27,22 @@ const AttendanceHistory = lazy(() => import("./pages/AttendanceHistory"));
 const ProfileEdit = lazy(() => import("./pages/ProfileEdit"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Create a stable query client instance
+// Create a stable query client instance with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000, // 1 minute
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
       retry: (failureCount, error: any) => {
         // Don't retry on 4xx errors
         if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
-        return failureCount < 3;
+        return failureCount < 2; // Reduced from 3 to 2
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000), // Reduced max delay
+      refetchOnWindowFocus: false, // Prevent unnecessary refetches
+      refetchOnReconnect: 'always',
     },
     mutations: {
       retry: 1,
@@ -48,24 +51,29 @@ const queryClient = new QueryClient({
 });
 
 // App performance monitoring component
-function AppPerformanceMonitor() {
+const AppPerformanceMonitor = React.memo(() => {
   usePagePerformance('App');
   useMemoryMonitoring(60000); // Check memory every minute
   return null;
-}
+});
 
-// Loading fallback component
-function PageLoadingFallback() {
+// Loading fallback component with better UX
+const PageLoadingFallback = React.memo(() => {
   return <LoadingSpinner size="lg" text="Loading page..." fullScreen />;
-}
+});
+
+// Memoized route components to prevent unnecessary re-renders
+const MemoizedProtectedRoute = React.memo(ProtectedRoute);
 
 function App() {
   // Log app initialization
-  logger.info('Application starting', {
-    userAgent: navigator.userAgent,
-    url: window.location.href,
-    timestamp: new Date().toISOString()
-  });
+  useEffect(() => {
+    logger.info('Application starting', {
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      timestamp: new Date().toISOString()
+    });
+  }, []);
 
   return (
     <ErrorBoundary
@@ -96,49 +104,49 @@ function App() {
                 <Route 
                   path="/admin/dashboard" 
                   element={
-                    <ProtectedRoute requireRole="admin">
+                    <MemoizedProtectedRoute requireRole="admin">
                       <AdminDashboard />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/admin/sessions" 
                   element={
-                    <ProtectedRoute requireRole="admin">
+                    <MemoizedProtectedRoute requireRole="admin">
                       <Sessions />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/admin/participants" 
                   element={
-                    <ProtectedRoute requireRole="admin">
+                    <MemoizedProtectedRoute requireRole="admin">
                       <Participants />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/admin/attendance" 
                   element={
-                    <ProtectedRoute requireRole="admin">
+                    <MemoizedProtectedRoute requireRole="admin">
                       <AttendanceHistory />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/admin/settings" 
                   element={
-                    <ProtectedRoute requireRole="admin">
+                    <MemoizedProtectedRoute requireRole="admin">
                       <AdminSettings />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/admin/scan" 
                   element={
-                    <ProtectedRoute requireRole="admin">
+                    <MemoizedProtectedRoute requireRole="admin">
                       <ScanQR />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
 
@@ -146,17 +154,17 @@ function App() {
                 <Route 
                   path="/participant/dashboard" 
                   element={
-                    <ProtectedRoute requireRole="participant">
+                    <MemoizedProtectedRoute requireRole="participant">
                       <ParticipantDashboard />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
                 <Route 
                   path="/participant/profile" 
                   element={
-                    <ProtectedRoute requireRole="participant">
+                    <MemoizedProtectedRoute requireRole="participant">
                       <ProfileEdit />
-                    </ProtectedRoute>
+                    </MemoizedProtectedRoute>
                   } 
                 />
 
@@ -172,4 +180,4 @@ function App() {
   );
 }
 
-export default App;
+export default React.memo(App);
