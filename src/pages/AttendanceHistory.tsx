@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -171,7 +170,7 @@ export default function AttendanceHistory() {
     }
   };
 
-  // Calculate statistics
+  // Calculate statistics - now available for both admin and participant
   const absentCount = totalSessions - new Set(filteredRecords.map(r => r.session_id)).size;
 
   if (loading) {
@@ -202,13 +201,13 @@ export default function AttendanceHistory() {
         <h1 className="text-2xl sm:text-3xl font-bold mb-2">Riwayat Kehadiran</h1>
         <p className="text-gray-600 text-sm sm:text-base px-4">
           {profile?.role === 'admin' 
-            ? 'Lihat riwayat kehadiran semua peserta' 
+            ? 'Lihat riwayat kehadiran semua peserta untuk evaluasi' 
             : 'Lihat riwayat kehadiran Anda'
           }
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Filters - keep existing code */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center text-lg">
@@ -248,7 +247,7 @@ export default function AttendanceHistory() {
         </CardContent>
       </Card>
 
-      {/* Statistics */}
+      {/* Statistics - now showing for both admin and participant */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
@@ -300,7 +299,7 @@ export default function AttendanceHistory() {
         </Card>
       </div>
 
-      {/* Attendance Records */}
+      {/* Attendance Records - keep existing code */}
       <div className="space-y-4">
         {filteredRecords.length === 0 ? (
           <Card>
