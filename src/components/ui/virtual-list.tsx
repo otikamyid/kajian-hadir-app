@@ -8,6 +8,7 @@ interface VirtualListProps<T> {
   items: T[];
   itemHeight: number;
   height: number;
+  width?: number;
   renderItem: ({ index, style, data }: { index: number; style: React.CSSProperties; data: T[] }) => React.ReactNode;
   searchable?: boolean;
   searchKey?: keyof T;
@@ -19,6 +20,7 @@ function VirtualListComponent<T extends Record<string, any>>({
   items,
   itemHeight,
   height,
+  width = 400,
   renderItem,
   searchable = false,
   searchKey,
@@ -62,6 +64,7 @@ function VirtualListComponent<T extends Record<string, any>>({
         <List
           ref={listRef}
           height={height}
+          width={width}
           itemCount={filteredItems.length}
           itemSize={itemHeight}
           itemData={filteredItems}

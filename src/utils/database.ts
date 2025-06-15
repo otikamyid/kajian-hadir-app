@@ -11,6 +11,9 @@ export interface DatabaseOperation {
   select?: string;
 }
 
+// Define the valid table names from our database
+type TableName = 'participants' | 'kajian_sessions' | 'attendance' | 'profiles' | 'participant_invitations';
+
 export class DatabaseManager {
   private static logOperation(operation: DatabaseOperation, success: boolean, details?: any) {
     logger.logDatabase(operation.operation, operation.table, success, {
@@ -26,12 +29,12 @@ export class DatabaseManager {
     data,
     filters = {},
     select = '*'
-  }: DatabaseOperation): Promise<{ data: T[] | T | null; error: any }> {
+  }: DatabaseOperation): Promise<{ data: T | T[] | null; error: any }> {
     const operationLabel = `db.${table}.${operation}`;
     
     return PerformanceMonitor.measureAsync(operationLabel, async () => {
       try {
-        let query = supabase.from(table);
+        let query = supabase.from(table as TableName);
 
         switch (operation) {
           case 'select':
@@ -40,32 +43,52 @@ export class DatabaseManager {
           
           case 'insert':
             if (!data) throw new Error('Data required for insert operation');
-            query = query.insert(data).select(select);
-            break;
+            return await query.insert(data).select(select);
           
           case 'update':
             if (!data) throw new Error('Data required for update operation');
-            query = query.update(data).select(select);
-            break;
+            let updateQuery = query.update(data);
+            
+            // Apply filters for update
+            Object.entries(filters).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                updateQuery = updateQuery.in(key, value);
+              } else if (value !== undefined && value !== null) {
+                updateQuery = updateQuery.eq(key, value);
+              }
+            });
+            
+            return await updateQuery.select(select);
           
           case 'upsert':
             if (!data) throw new Error('Data required for upsert operation');
-            query = query.upsert(data).select(select);
-            break;
+            return await query.upsert(data).select(select);
           
           case 'delete':
-            query = query.delete().select(select);
-            break;
+            let deleteQuery = query.delete();
+            
+            // Apply filters for delete
+            Object.entries(filters).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                deleteQuery = deleteQuery.in(key, value);
+              } else if (value !== undefined && value !== null) {
+                deleteQuery = deleteQuery.eq(key, value);
+              }
+            });
+            
+            return await deleteQuery.select(select);
         }
 
-        // Apply filters
-        Object.entries(filters).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            query = query.in(key, value);
-          } else if (value !== undefined && value !== null) {
-            query = query.eq(key, value);
-          }
-        });
+        // Apply filters for select
+        if (operation === 'select') {
+          Object.entries(filters).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              query = query.in(key, value);
+            } else if (value !== undefined && value !== null) {
+              query = query.eq(key, value);
+            }
+          });
+        }
 
         const result = await query;
         
@@ -91,7 +114,7 @@ export class DatabaseManager {
     });
     
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data as T[]) || [];
   }
 
   static async findOne<T = any>(table: string, filters: Record<string, any>, select = '*'): Promise<T | null> {
@@ -103,7 +126,7 @@ export class DatabaseManager {
     });
     
     if (error) throw new Error(error.message);
-    return Array.isArray(data) ? data[0] || null : data;
+    return Array.isArray(data) ? data[0] || null : data as T;
   }
 
   static async create<T = any>(table: string, data: any, select = '*'): Promise<T> {
@@ -152,7 +175,7 @@ export class DatabaseManager {
     });
     
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data as T[]) || [];
   }
 }
 

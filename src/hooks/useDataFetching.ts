@@ -21,7 +21,7 @@ export function useDataQuery<T = any>(
         throw new Error(error.message);
       }
       
-      return data;
+      return data as T;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
@@ -79,7 +79,7 @@ export function useDataMutation<T = any, TVariables = any>(
 // Specific hooks for common entities
 export function useParticipants(filters?: Record<string, any>) {
   return useDataQuery(
-    ['participants', filters],
+    ['participants', JSON.stringify(filters || {})],
     {
       table: 'participants',
       operation: 'select',
@@ -90,9 +90,9 @@ export function useParticipants(filters?: Record<string, any>) {
 
 export function useSessions(filters?: Record<string, any>) {
   return useDataQuery(
-    ['sessions', filters],
+    ['sessions', JSON.stringify(filters || {})],
     {
-      table: 'sessions',
+      table: 'kajian_sessions',
       operation: 'select',
       filters,
     }
@@ -129,7 +129,7 @@ export function useDeleteParticipant() {
 
 export function useCreateSession() {
   return useDataMutation(
-    async (data: any) => DatabaseManager.create('sessions', data),
+    async (data: any) => DatabaseManager.create('kajian_sessions', data),
     {
       invalidateQueries: [['sessions']],
     }
@@ -139,7 +139,7 @@ export function useCreateSession() {
 export function useUpdateSession() {
   return useDataMutation(
     async ({ id, ...data }: { id: string } & any) => 
-      DatabaseManager.update('sessions', { id }, data),
+      DatabaseManager.update('kajian_sessions', { id }, data),
     {
       invalidateQueries: [['sessions']],
     }
