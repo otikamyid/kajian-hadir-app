@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { LandingPage } from '@/pages/LandingPage';
@@ -12,9 +13,11 @@ import AttendanceHistory from '@/pages/AttendanceHistory';
 import ProfileEdit from '@/pages/ProfileEdit';
 import ParticipantDashboard from '@/pages/ParticipantDashboard';
 import NotFound from '@/pages/NotFound';
+import Setup from '@/pages/Setup';
 import { Navbar } from '@/components/Navbar';
 import AdminSettings from '@/pages/AdminSettings';
 import ParticipantCheckIn from '@/pages/ParticipantCheckIn';
+import { SetupGuard } from '@/components/SetupGuard';
 
 interface Props {
   children: React.ReactNode;
@@ -35,58 +38,68 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/admin/auth" element={<AdminAuth />} />
-        <Route path="/admin/register" element={<AdminRegister />} />
+        {/* Setup route - accessible without setup guard */}
+        <Route path="/setup" element={<Setup />} />
         
-        {/* Protected routes */}
-        <Route path="/admin/dashboard" element={
-          <Layout>
-            <AdminDashboard />
-          </Layout>
+        {/* All other routes protected by setup guard */}
+        <Route path="/*" element={
+          <SetupGuard>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin/auth" element={<AdminAuth />} />
+              <Route path="/admin/register" element={<AdminRegister />} />
+              
+              {/* Protected routes */}
+              <Route path="/admin/dashboard" element={
+                <Layout>
+                  <AdminDashboard />
+                </Layout>
+              } />
+              <Route path="/admin/settings" element={
+                <Layout>
+                  <AdminSettings />
+                </Layout>
+              } />
+              <Route path="/participant/dashboard" element={
+                <Layout>
+                  <ParticipantDashboard />
+                </Layout>
+              } />
+              <Route path="/participant/checkin" element={
+                <Layout>
+                  <ParticipantCheckIn />
+                </Layout>
+              } />
+              <Route path="/sessions" element={
+                <Layout>
+                  <Sessions />
+                </Layout>
+              } />
+              <Route path="/participants" element={
+                <Layout>
+                  <Participants />
+                </Layout>
+              } />
+              <Route path="/scan" element={
+                <Layout>
+                  <ScanQR />
+                </Layout>
+              } />
+              <Route path="/attendance" element={
+                <Layout>
+                  <AttendanceHistory />
+                </Layout>
+              } />
+              <Route path="/profile/edit" element={
+                <Layout>
+                  <ProfileEdit />
+                </Layout>
+              } />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </SetupGuard>
         } />
-        <Route path="/admin/settings" element={
-          <Layout>
-            <AdminSettings />
-          </Layout>
-        } />
-        <Route path="/participant/dashboard" element={
-          <Layout>
-            <ParticipantDashboard />
-          </Layout>
-        } />
-        <Route path="/participant/checkin" element={
-          <Layout>
-            <ParticipantCheckIn />
-          </Layout>
-        } />
-        <Route path="/sessions" element={
-          <Layout>
-            <Sessions />
-          </Layout>
-        } />
-        <Route path="/participants" element={
-          <Layout>
-            <Participants />
-          </Layout>
-        } />
-        <Route path="/scan" element={
-          <Layout>
-            <ScanQR />
-          </Layout>
-        } />
-        <Route path="/attendance" element={
-          <Layout>
-            <AttendanceHistory />
-          </Layout>
-        } />
-        <Route path="/profile/edit" element={
-          <Layout>
-            <ProfileEdit />
-          </Layout>
-        } />
-        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );
