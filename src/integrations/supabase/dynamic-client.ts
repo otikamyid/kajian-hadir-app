@@ -1,6 +1,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { secureStorage } from '@/utils/security';
 
 export interface SupabaseConfig {
   url: string;
@@ -31,11 +32,11 @@ class DynamicSupabaseClient {
   }
 
   private getDefaultConfig(): SupabaseConfig | null {
-    // Check localStorage for custom config
-    const savedConfig = localStorage.getItem('supabase_config');
+    // Check secure storage for custom config
+    const savedConfig = secureStorage.getItem('supabase_config');
     if (savedConfig) {
       try {
-        return JSON.parse(savedConfig);
+        return savedConfig;
       } catch (error) {
         console.error('Error parsing saved Supabase config:', error);
       }

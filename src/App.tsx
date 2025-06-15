@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import LandingPage from '@/pages/LandingPage';
 import Auth from '@/pages/Auth';
 import AdminAuth from '@/pages/AdminAuth';
@@ -34,62 +36,87 @@ function Layout({ children }: Props) {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/admin/auth" element={<AdminAuth />} />
-        <Route path="/admin/register" element={<AdminRegister />} />
-        
-        {/* Protected routes */}
-        <Route path="/admin/dashboard" element={
-          <Layout>
-            <AdminDashboard />
-          </Layout>
-        } />
-        <Route path="/admin/settings" element={
-          <Layout>
-            <AdminSettings />
-          </Layout>
-        } />
-        <Route path="/participant/dashboard" element={
-          <Layout>
-            <ParticipantDashboard />
-          </Layout>
-        } />
-        <Route path="/participant/checkin" element={
-          <Layout>
-            <ParticipantCheckIn />
-          </Layout>
-        } />
-        <Route path="/sessions" element={
-          <Layout>
-            <Sessions />
-          </Layout>
-        } />
-        <Route path="/participants" element={
-          <Layout>
-            <Participants />
-          </Layout>
-        } />
-        <Route path="/scan" element={
-          <Layout>
-            <ScanQR />
-          </Layout>
-        } />
-        <Route path="/attendance" element={
-          <Layout>
-            <AttendanceHistory />
-          </Layout>
-        } />
-        <Route path="/profile/edit" element={
-          <Layout>
-            <ProfileEdit />
-          </Layout>
-        } />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/admin/auth" element={<AdminAuth />} />
+          <Route path="/admin/register" element={<AdminRegister />} />
+          
+          {/* Protected Admin Routes */}
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute requireRole="admin">
+              <Layout>
+                <AdminDashboard />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/settings" element={
+            <ProtectedRoute requireRole="admin">
+              <Layout>
+                <AdminSettings />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Protected Participant Routes */}
+          <Route path="/participant/dashboard" element={
+            <ProtectedRoute requireRole="participant">
+              <Layout>
+                <ParticipantDashboard />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/participant/checkin" element={
+            <ProtectedRoute requireRole="participant">
+              <Layout>
+                <ParticipantCheckIn />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          
+          {/* Shared Protected Routes */}
+          <Route path="/sessions" element={
+            <ProtectedRoute>
+              <Layout>
+                <Sessions />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/participants" element={
+            <ProtectedRoute requireRole="admin">
+              <Layout>
+                <Participants />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/scan" element={
+            <ProtectedRoute>
+              <Layout>
+                <ScanQR />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/attendance" element={
+            <ProtectedRoute>
+              <Layout>
+                <AttendanceHistory />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/profile/edit" element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfileEdit />
+              </Layout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
