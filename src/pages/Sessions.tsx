@@ -6,10 +6,11 @@ import { CreateSessionForm } from '@/components/CreateSessionForm';
 import { EditSessionForm } from '@/components/EditSessionForm';
 import { SessionAttendanceMonitor } from '@/components/SessionAttendanceMonitor';
 import { SessionQRPrint } from '@/components/SessionQRPrint';
+import { SessionBulkImport } from '@/components/SessionBulkImport';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff, Monitor, Printer } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, Trash2, Edit, Power, PowerOff, Monitor, Printer, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type KajianSession = Tables<'kajian_sessions'>;
@@ -19,6 +20,7 @@ export default function Sessions() {
   const [sessions, setSessions] = useState<KajianSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [editingSession, setEditingSession] = useState<KajianSession | null>(null);
   const [monitoringSession, setMonitoringSession] = useState<KajianSession | null>(null);
   const [printingSession, setPrintingSession] = useState<KajianSession | null>(null);
@@ -138,6 +140,20 @@ export default function Sessions() {
     );
   }
 
+  if (showBulkImport) {
+    return (
+      <div className="space-y-6">
+        <SessionBulkImport
+          onImportComplete={() => {
+            setShowBulkImport(false);
+            fetchSessions();
+          }}
+          onCancel={() => setShowBulkImport(false)}
+        />
+      </div>
+    );
+  }
+
   if (editingSession) {
     return (
       <div className="space-y-6">
@@ -181,10 +197,16 @@ export default function Sessions() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <h1 className="text-2xl sm:text-3xl font-bold">Sesi Kajian</h1>
         {profile?.role === 'admin' && (
-          <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Buat Session Baru
-          </Button>
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+            <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              Buat Session Baru
+            </Button>
+            <Button onClick={() => setShowBulkImport(true)} variant="outline" className="w-full sm:w-auto">
+              <Upload className="h-4 w-4 mr-2" />
+              Import Bulk
+            </Button>
+          </div>
         )}
       </div>
 
