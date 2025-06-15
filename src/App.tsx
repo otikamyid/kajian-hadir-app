@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import LandingPage from '@/pages/LandingPage';
+import { LandingPage } from '@/pages/LandingPage';
 import Auth from '@/pages/Auth';
 import AdminAuth from '@/pages/AdminAuth';
 import AdminRegister from '@/pages/AdminRegister';

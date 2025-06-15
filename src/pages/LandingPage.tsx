@@ -1,11 +1,10 @@
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, QrCode, Users, Shield, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
-export default function LandingPage() {
+export function LandingPage() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
 
@@ -245,3 +244,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+export default LandingPage;
