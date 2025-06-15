@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, Clock, Save } from 'lucide-react';
+import { SupabaseConfigPanel } from '@/components/SupabaseConfigPanel';
 
 export default function AdminSettings() {
   const [lateThresholdMinutes, setLateThresholdMinutes] = useState(15);
@@ -48,6 +48,9 @@ export default function AdminSettings() {
         <Settings className="h-8 w-8" />
         <h1 className="text-2xl sm:text-3xl font-bold">Pengaturan Admin</h1>
       </div>
+
+      {/* Supabase Configuration Panel */}
+      <SupabaseConfigPanel />
 
       <Card>
         <CardHeader>
