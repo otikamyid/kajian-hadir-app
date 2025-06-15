@@ -5,10 +5,37 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QrCode, Calendar, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ParticipantDashboard() {
   const { profile, loading } = useAuth();
   const navigate = useNavigate();
+  const [participantName, setParticipantName] = useState<string>('');
+
+  useEffect(() => {
+    const fetchParticipantName = async () => {
+      if (profile?.participant_id) {
+        try {
+          const { data, error } = await supabase
+            .from('participants')
+            .select('name')
+            .eq('id', profile.participant_id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching participant name:', error);
+          } else if (data) {
+            setParticipantName(data.name);
+          }
+        } catch (error) {
+          console.error('Error in fetchParticipantName:', error);
+        }
+      }
+    };
+
+    fetchParticipantName();
+  }, [profile?.participant_id]);
 
   if (loading) {
     return (
@@ -26,7 +53,7 @@ export default function ParticipantDashboard() {
       <div className="text-center sm:text-left">
         <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Peserta</h1>
         <p className="text-gray-600 text-sm sm:text-base">
-          Selamat datang, {profile?.email || 'User'}
+          Selamat datang, {participantName || profile?.email || 'User'}
           <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
             Peserta
           </span>

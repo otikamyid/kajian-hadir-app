@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { History, Search, Calendar, Clock, Users, Download } from 'lucide-react';
+import { History, Search, Calendar, Clock, Users, Download, BookOpen, UserX } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface AttendanceRecord {
@@ -35,6 +35,7 @@ interface AttendanceRecord {
 export default function AttendanceHistory() {
   const { profile } = useAuth();
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -43,8 +44,28 @@ export default function AttendanceHistory() {
   useEffect(() => {
     if (profile) {
       fetchAttendanceHistory();
+      fetchTotalSessions();
     }
   }, [profile]);
+
+  const fetchTotalSessions = async () => {
+    if (!profile) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('kajian_sessions')
+        .select('id')
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching total sessions:', error);
+      } else {
+        setTotalSessions(data?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error in fetchTotalSessions:', error);
+    }
+  };
 
   const fetchAttendanceHistory = async () => {
     if (!profile) {
@@ -150,6 +171,9 @@ export default function AttendanceHistory() {
     }
   };
 
+  // Calculate statistics
+  const absentCount = totalSessions - new Set(filteredRecords.map(r => r.session_id)).size;
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -225,12 +249,19 @@ export default function AttendanceHistory() {
       </Card>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <Users className="h-8 w-8 mx-auto text-blue-600 mb-2" />
             <div className="text-2xl font-bold">{filteredRecords.length}</div>
             <div className="text-sm text-gray-600">Total Kehadiran</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <BookOpen className="h-8 w-8 mx-auto text-purple-600 mb-2" />
+            <div className="text-2xl font-bold">{totalSessions}</div>
+            <div className="text-sm text-gray-600">Total Sesi Kajian</div>
           </CardContent>
         </Card>
         <Card>
@@ -258,6 +289,13 @@ export default function AttendanceHistory() {
               {filteredRecords.filter(r => r.status === 'late').length}
             </div>
             <div className="text-sm text-gray-600">Terlambat</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <UserX className="h-8 w-8 mx-auto text-gray-600 mb-2" />
+            <div className="text-2xl font-bold">{absentCount}</div>
+            <div className="text-sm text-gray-600">Tidak Hadir</div>
           </CardContent>
         </Card>
       </div>
