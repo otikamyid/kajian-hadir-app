@@ -7,8 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useFormValidation } from '@/hooks/useFormValidation';
+import { usePerformance } from '@/hooks/usePerformance';
 import { Calendar, ArrowLeft, Mail, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { signInSchema, signUpSchema } from '@/lib/validations';
+import { logger } from '@/utils/logger';
+import { authRateLimiter, sanitizeInput } from '@/utils/security';
 
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +27,12 @@ export function AuthForm() {
   const { signIn, signUp, createParticipantProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { measureAsync } = usePerformance();
+
+  // Form validation
+  const signInValidation = useFormValidation(signInSchema);
+  const signUpValidation = useFormValidation(signUpSchema);
+  const currentValidation = isLogin ? signInValidation : signUpValidation;
 
   const getErrorMessage = (error: any) => {
     if (!error?.message) return "Terjadi kesalahan. Silakan coba lagi.";
@@ -52,108 +63,144 @@ export function AuthForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isLogin && (!name || !phone)) {
+    // Rate limiting check
+    const userIdentifier = email || 'unknown';
+    if (!authRateLimiter.isAllowed(userIdentifier)) {
       toast({
-        title: "Error",
-        description: "Semua field harus diisi",
+        title: "Terlalu Banyak Percobaan",
+        description: "Silakan tunggu 15 menit sebelum mencoba lagi.",
+        variant: "destructive",
+      });
+      logger.warn('Auth rate limit exceeded', { email: userIdentifier });
+      return;
+    }
+
+    // Sanitize inputs
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedName = sanitizeInput(name);
+    const sanitizedPhone = sanitizeInput(phone);
+
+    // Validate form data
+    const formData = isLogin 
+      ? { email: sanitizedEmail, password }
+      : { email: sanitizedEmail, password, name: sanitizedName, phone: sanitizedPhone };
+
+    if (!currentValidation.validate(formData)) {
+      toast({
+        title: "Error Validasi",
+        description: "Silakan periksa data yang Anda masukkan.",
         variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
+    logger.info(`Starting ${isLogin ? 'login' : 'registration'} process`, { 
+      email: sanitizedEmail,
+      action: isLogin ? 'login' : 'register'
+    });
 
     try {
       if (isLogin) {
-        console.log('Attempting participant login with:', email);
-        const { error } = await signIn(email, password);
-        if (error) {
+        const result = await measureAsync('participant-login', async () => {
+          return await signIn(sanitizedEmail, password);
+        });
+
+        if (result.error) {
+          logger.logAuth('login', false, { 
+            email: sanitizedEmail, 
+            error: result.error.message 
+          });
           toast({
             title: "Gagal Masuk",
-            description: getErrorMessage(error),
+            description: getErrorMessage(result.error),
             variant: "destructive",
           });
         } else {
-          console.log('Login berhasil, menunggu redirect...');
+          logger.logAuth('login', true, { email: sanitizedEmail });
           toast({
             title: "Berhasil",
             description: "Login berhasil! Selamat datang di Kajian Hadir.",
           });
           
-          // Force redirect setelah login berhasil
           setTimeout(() => {
             navigate('/participant/dashboard');
           }, 1000);
         }
       } else {
-        console.log('=== Starting participant registration ===');
-        console.log('Registration data:', { email, name, phone });
-        
-        // Step 1: Sign up user and immediately get the user data
-        const { error: signUpError, user } = await signUp(email, password);
-        if (signUpError) {
-          console.error('Sign up error:', signUpError);
-          toast({
-            title: "Gagal Mendaftar",
-            description: getErrorMessage(signUpError),
-            variant: "destructive",
+        const result = await measureAsync('participant-registration', async () => {
+          logger.info('Starting participant registration', { 
+            email: sanitizedEmail, 
+            name: sanitizedName, 
+            phone: sanitizedPhone 
           });
-          return;
-        }
+          
+          const { error: signUpError, user } = await signUp(sanitizedEmail, password);
+          if (signUpError) {
+            throw signUpError;
+          }
 
-        if (!user) {
+          if (!user) {
+            throw new Error('Failed to create user account');
+          }
+
+          logger.info('User signup successful', { userId: user.id, email: sanitizedEmail });
+          
+          // Show email confirmation message
+          setShowEmailConfirmation(true);
+          
           toast({
-            title: "Error",
-            description: "Gagal membuat akun. Silakan coba lagi.",
-            variant: "destructive",
+            title: "Pendaftaran Berhasil!",
+            description: "Akun berhasil dibuat! Silakan cek email Anda untuk konfirmasi.",
           });
-          return;
-        }
 
-        console.log('✓ User signup successful, user ID:', user.id);
-        
-        // Show email confirmation message
-        setShowEmailConfirmation(true);
-        
-        toast({
-          title: "Pendaftaran Berhasil!",
-          description: "Akun berhasil dibuat! Silakan cek email Anda untuk konfirmasi.",
+          // Create participant profile
+          const profileResult = await createParticipantProfile(
+            user.id, 
+            sanitizedEmail, 
+            sanitizedName, 
+            sanitizedPhone
+          );
+          
+          if (profileResult.error) {
+            logger.error('Failed to create participant profile', {
+              userId: user.id,
+              error: profileResult.error.message
+            });
+            throw new Error(profileResult.error.message || 'Failed to create participant profile');
+          }
+
+          logger.info('Participant profile created successfully', {
+            userId: user.id,
+            participantId: profileResult.participant?.id
+          });
+
+          setTimeout(() => {
+            toast({
+              title: "Profil Tersimpan",
+              description: "Profil peserta berhasil dibuat. Anda dapat login setelah mengkonfirmasi email.",
+            });
+          }, 2000);
+
+          return { user, profile: profileResult };
         });
 
-        // Step 2: Create participant profile immediately with the user ID
-        try {
-          console.log('Creating participant profile with user ID:', user.id);
-          
-          const result = await createParticipantProfile(user.id, email, name, phone);
-          
-          if (result.error) {
-            console.error('Error creating participant profile:', result.error);
-            throw new Error(result.error.message || 'Failed to create participant profile');
-          } else {
-            console.log('✓ Participant profile created successfully');
-            
-            // Additional success message for profile creation
-            setTimeout(() => {
-              toast({
-                title: "Profil Tersimpan",
-                description: "Profil peserta berhasil dibuat. Anda dapat login setelah mengkonfirmasi email.",
-              });
-            }, 2000);
-          }
-        } catch (error: any) {
-          console.error('Final error in profile creation:', error);
-          toast({
-            title: "Peringatan",
-            description: `Akun berhasil dibuat namun ada masalah dengan profil: ${error.message}`,
-            variant: "destructive",
-          });
-        }
+        logger.logAuth('registration', true, { 
+          email: sanitizedEmail,
+          userId: result.user.id
+        });
+
       }
-    } catch (error) {
+    } catch (error: any) {
+      logger.logAuth(isLogin ? 'login' : 'registration', false, { 
+        email: sanitizedEmail, 
+        error: error.message 
+      });
+      
       console.error('Auth error:', error);
       toast({
         title: "Error",
-        description: "Terjadi kesalahan. Silakan coba lagi.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -221,19 +268,21 @@ export function AuthForm() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nama Lengkap</Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Masukkan nama lengkap"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                    />
-                  </div>
-                </>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nama Lengkap</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Masukkan nama lengkap"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={currentValidation.getError('name') ? 'border-red-500' : ''}
+                    required
+                  />
+                  {currentValidation.getError('name') && (
+                    <p className="text-sm text-red-600">{currentValidation.getError('name')}</p>
+                  )}
+                </div>
               )}
               
               <div className="space-y-2">
@@ -244,8 +293,12 @@ export function AuthForm() {
                   placeholder="contoh@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className={currentValidation.getError('email') ? 'border-red-500' : ''}
                   required
                 />
+                {currentValidation.getError('email') && (
+                  <p className="text-sm text-red-600">{currentValidation.getError('email')}</p>
+                )}
               </div>
 
               {!isLogin && (
@@ -257,8 +310,12 @@ export function AuthForm() {
                     placeholder="contoh: +628123456789"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    className={currentValidation.getError('phone') ? 'border-red-500' : ''}
                     required
                   />
+                  {currentValidation.getError('phone') && (
+                    <p className="text-sm text-red-600">{currentValidation.getError('phone')}</p>
+                  )}
                 </div>
               )}
               
@@ -270,8 +327,12 @@ export function AuthForm() {
                   placeholder="Masukkan password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className={currentValidation.getError('password') ? 'border-red-500' : ''}
                   required
                 />
+                {currentValidation.getError('password') && (
+                  <p className="text-sm text-red-600">{currentValidation.getError('password')}</p>
+                )}
               </div>
               
               {!isLogin && (
@@ -306,6 +367,7 @@ export function AuthForm() {
                   onClick={() => {
                     setIsLogin(!isLogin);
                     setShowEmailConfirmation(false);
+                    currentValidation.clearErrors();
                   }}
                   className="text-blue-600 text-sm sm:text-base"
                   disabled={loading}
