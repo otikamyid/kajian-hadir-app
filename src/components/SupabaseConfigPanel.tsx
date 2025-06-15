@@ -8,9 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DatabaseSetupWizard } from './DatabaseSetupWizard';
 import { dynamicSupabase, SupabaseConfig } from '@/integrations/supabase/dynamic-client';
 import { useToast } from '@/hooks/use-toast';
-import { useFormValidation } from '@/hooks/useFormValidation';
-import { supabaseConfigSchema } from '@/lib/validations';
-import { secureStorage } from '@/utils/security';
 import { Database, Settings, TestTube, CheckCircle, XCircle, HelpCircle } from 'lucide-react';
 
 export function SupabaseConfigPanel() {
@@ -20,14 +17,14 @@ export function SupabaseConfigPanel() {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const { toast } = useToast();
-  const { validate, getError } = useFormValidation(supabaseConfigSchema);
 
   useEffect(() => {
-    // Load saved configuration from secure storage
-    const savedConfig = secureStorage.getItem('supabase_config');
+    // Load saved configuration
+    const savedConfig = localStorage.getItem('supabase_config');
     if (savedConfig) {
       try {
-        setConfig(savedConfig);
+        const parsed = JSON.parse(savedConfig);
+        setConfig(parsed);
         setConnectionStatus('success');
       } catch (error) {
         console.error('Error loading saved config:', error);
@@ -36,10 +33,10 @@ export function SupabaseConfigPanel() {
   }, []);
 
   const testConnection = async () => {
-    if (!validate(config)) {
+    if (!config.url || !config.anonKey) {
       toast({
         title: "Error",
-        description: "Harap periksa URL dan Anon Key",
+        description: "Harap masukkan URL dan Anon Key",
         variant: "destructive",
       });
       return;
@@ -75,10 +72,10 @@ export function SupabaseConfigPanel() {
   };
 
   const saveConfiguration = async () => {
-    if (!validate(config)) {
+    if (!config.url || !config.anonKey) {
       toast({
         title: "Error",
-        description: "Harap periksa semua field",
+        description: "Harap masukkan URL dan Anon Key",
         variant: "destructive",
       });
       return;
@@ -97,8 +94,8 @@ export function SupabaseConfigPanel() {
         return;
       }
 
-      // Save to secure storage
-      secureStorage.setItem('supabase_config', config);
+      // Save to localStorage
+      localStorage.setItem('supabase_config', JSON.stringify(config));
       
       // Initialize dynamic client
       dynamicSupabase.initialize(config);
@@ -121,7 +118,7 @@ export function SupabaseConfigPanel() {
   };
 
   const resetConfiguration = () => {
-    secureStorage.removeItem('supabase_config');
+    localStorage.removeItem('supabase_config');
     setConfig({ url: '', anonKey: '' });
     setConnectionStatus('idle');
     toast({
@@ -189,11 +186,7 @@ export function SupabaseConfigPanel() {
               placeholder="https://yourproject.supabase.co"
               value={config.url}
               onChange={(e) => setConfig(prev => ({ ...prev, url: e.target.value }))}
-              className={getError('url') ? 'border-red-500' : ''}
             />
-            {getError('url') && (
-              <p className="text-sm text-red-600">{getError('url')}</p>
-            )}
           </div>
 
           <div className="space-y-2">
@@ -204,11 +197,7 @@ export function SupabaseConfigPanel() {
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               value={config.anonKey}
               onChange={(e) => setConfig(prev => ({ ...prev, anonKey: e.target.value }))}
-              className={getError('anonKey') ? 'border-red-500' : ''}
             />
-            {getError('anonKey') && (
-              <p className="text-sm text-red-600">{getError('anonKey')}</p>
-            )}
           </div>
         </div>
 
@@ -244,7 +233,7 @@ export function SupabaseConfigPanel() {
 
         <Alert>
           <AlertDescription className="text-xs">
-            <strong>Catatan:</strong> Konfigurasi ini disimpan secara terenkripsi di browser. 
+            <strong>Catatan:</strong> Konfigurasi ini disimpan di localStorage browser. 
             Untuk deployment production, pertimbangkan menggunakan environment variables.
           </AlertDescription>
         </Alert>
