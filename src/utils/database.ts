@@ -38,12 +38,28 @@ export class DatabaseManager {
 
         switch (operation) {
           case 'select':
-            query = query.select(select);
-            break;
+            let selectQuery = query.select(select);
+            
+            // Apply filters for select
+            Object.entries(filters).forEach(([key, value]) => {
+              if (Array.isArray(value)) {
+                selectQuery = selectQuery.in(key, value);
+              } else if (value !== undefined && value !== null) {
+                selectQuery = selectQuery.eq(key, value);
+              }
+            });
+            
+            const selectResult = await selectQuery;
+            this.logOperation({ table, operation, data, filters, select }, !selectResult.error, {
+              count: Array.isArray(selectResult.data) ? selectResult.data?.length : selectResult.data ? 1 : 0
+            });
+            return selectResult;
           
           case 'insert':
             if (!data) throw new Error('Data required for insert operation');
-            return await query.insert(data).select(select);
+            const insertResult = await query.insert(data).select(select);
+            this.logOperation({ table, operation, data, filters, select }, !insertResult.error);
+            return insertResult;
           
           case 'update':
             if (!data) throw new Error('Data required for update operation');
@@ -58,11 +74,15 @@ export class DatabaseManager {
               }
             });
             
-            return await updateQuery.select(select);
+            const updateResult = await updateQuery.select(select);
+            this.logOperation({ table, operation, data, filters, select }, !updateResult.error);
+            return updateResult;
           
           case 'upsert':
             if (!data) throw new Error('Data required for upsert operation');
-            return await query.upsert(data).select(select);
+            const upsertResult = await query.upsert(data).select(select);
+            this.logOperation({ table, operation, data, filters, select }, !upsertResult.error);
+            return upsertResult;
           
           case 'delete':
             let deleteQuery = query.delete();
@@ -76,27 +96,12 @@ export class DatabaseManager {
               }
             });
             
-            return await deleteQuery.select(select);
+            const deleteResult = await deleteQuery.select(select);
+            this.logOperation({ table, operation, data, filters, select }, !deleteResult.error);
+            return deleteResult;
         }
 
-        // Apply filters for select
-        if (operation === 'select') {
-          Object.entries(filters).forEach(([key, value]) => {
-            if (Array.isArray(value)) {
-              query = query.in(key, value);
-            } else if (value !== undefined && value !== null) {
-              query = query.eq(key, value);
-            }
-          });
-        }
-
-        const result = await query;
-        
-        this.logOperation({ table, operation, data, filters, select }, !result.error, {
-          count: Array.isArray(result.data) ? result.data?.length : result.data ? 1 : 0
-        });
-
-        return result;
+        return { data: null, error: new Error('Invalid operation') };
       } catch (error) {
         this.logOperation({ table, operation, data, filters, select }, false, { error });
         return { data: null, error };
@@ -130,7 +135,7 @@ export class DatabaseManager {
   }
 
   static async create<T = any>(table: string, data: any, select = '*'): Promise<T> {
-    const { data: result, error } = await this.execute<T>({
+    const { data: result, error } = await this.execute<T[]>({
       table,
       operation: 'insert',
       data,
@@ -142,7 +147,7 @@ export class DatabaseManager {
   }
 
   static async update<T = any>(table: string, filters: Record<string, any>, data: any, select = '*'): Promise<T> {
-    const { data: result, error } = await this.execute<T>({
+    const { data: result, error } = await this.execute<T[]>({
       table,
       operation: 'update',
       data,
@@ -155,7 +160,7 @@ export class DatabaseManager {
   }
 
   static async upsert<T = any>(table: string, data: any, select = '*'): Promise<T> {
-    const { data: result, error } = await this.execute<T>({
+    const { data: result, error } = await this.execute<T[]>({
       table,
       operation: 'upsert',
       data,
