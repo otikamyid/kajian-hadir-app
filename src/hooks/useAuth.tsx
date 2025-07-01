@@ -6,7 +6,21 @@ import { useNavigate } from 'react-router-dom';
 
 type Profile = Tables<'profiles'>;
 
-export function useAuth() {
+interface UseAuthReturn {
+  user: User | null;
+  session: Session | null;
+  profile: Profile | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string) => Promise<{ error: any; user?: User }>;
+  signOut: () => Promise<{ error: any }>;
+  createAdminProfile: (userId: string, email: string) => Promise<{ error?: any; success?: boolean; profile?: Profile }>;
+  createParticipantProfile: (userId: string, email: string, name: string, phone: string) => Promise<{ error?: any; success?: boolean; profile?: Profile; participant?: any }>;
+  createParticipantFromInvitation: (userId: string, email: string, invitationToken: string) => Promise<{ error?: any; success?: boolean; profile?: Profile }>;
+  updateParticipant: (participantId: string, name: string, phone: string) => Promise<{ error?: any; success?: boolean; data?: any }>;
+}
+
+export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
