@@ -60,7 +60,7 @@ export function LandingPage() {
                 alt="Hadir Kajian Logo" 
                 className="h-8 w-auto sm:h-10"
               />
-              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Hadir Kajian</h1>
+             
             </div>
             <div className="flex space-x-2 sm:space-x-3">
               {user ? (
