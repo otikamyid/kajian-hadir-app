@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { SupabaseConfigPanel } from '@/components/SupabaseConfigPanel';
+import { ProtectedSupabaseConfig } from '@/components/ProtectedSupabaseConfig';
 import { DatabaseSetupWizard } from '@/components/DatabaseSetupWizard';
 import { FirstAdminForm } from '@/components/FirstAdminForm';
 import { useSetupDetection } from '@/hooks/useSetupDetection';
@@ -109,7 +109,7 @@ export default function Setup() {
                     Jika belum punya project Supabase, buat dulu di <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">supabase.com</a>
                   </AlertDescription>
                 </Alert>
-                <SupabaseConfigPanel />
+                <ProtectedSupabaseConfig />
                 <div className="mt-6 text-center">
                   <Button 
                     onClick={() => {
