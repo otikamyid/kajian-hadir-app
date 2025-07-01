@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { LogOut, Users, Calendar, QrCode, BarChart, Menu, History } from 'lucide-react';
@@ -54,9 +53,6 @@ export function Navbar() {
                 alt="Hadir Kajian Logo" 
                 className="h-6 w-auto sm:h-8"
               />
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-                Hadir Kajian {isAdmin ? 'Admin' : 'Peserta'}
-              </h1>
             </div>
             
             {/* Desktop Navigation */}

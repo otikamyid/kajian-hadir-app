@@ -240,11 +240,6 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              <img 
-                src="/lovable-uploads/8a2bf4c5-d7e4-4716-8ea7-1b72802a300d.png" 
-                alt="Hadir Kajian Logo" 
-                className="h-6 w-auto sm:h-8"
-              />
               <span className="text-lg sm:text-xl font-bold">Hadir Kajian</span>
             </div>
             <p className="text-gray-400 text-sm sm:text-base px-4">
