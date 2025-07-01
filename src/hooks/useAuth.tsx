@@ -17,7 +17,7 @@ export function useAuth(): UseAuthReturn {
   // Wrap profile operations to update local state
   const wrappedCreateAdminProfile = async (userId: string, email: string) => {
     const result = await createAdminProfile(userId, email);
-    if (result.success && result.profile) {
+    if ('success' in result && result.success && 'profile' in result && result.profile) {
       setProfile(result.profile);
     }
     return result;
@@ -25,7 +25,7 @@ export function useAuth(): UseAuthReturn {
 
   const wrappedCreateParticipantProfile = async (userId: string, email: string, name: string, phone: string) => {
     const result = await createParticipantProfile(userId, email, name, phone);
-    if (result.success && result.profile) {
+    if ('success' in result && result.success && 'profile' in result && result.profile) {
       setProfile(result.profile);
     }
     return result;
@@ -33,7 +33,7 @@ export function useAuth(): UseAuthReturn {
 
   const wrappedCreateParticipantFromInvitation = async (userId: string, email: string, invitationToken: string) => {
     const result = await createParticipantFromInvitation(userId, email, invitationToken);
-    if (result.success && result.profile) {
+    if ('success' in result && result.success && 'profile' in result && result.profile) {
       setProfile(result.profile);
     }
     return result;
