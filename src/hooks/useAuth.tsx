@@ -2,7 +2,7 @@
 import { useAuthState } from './auth/useAuthState';
 import { useAuthOperations } from './auth/useAuthOperations';
 import { useProfileOperations } from './auth/useProfileOperations';
-import { UseAuthReturn } from './auth/types';
+import { UseAuthReturn, Profile } from './auth/types';
 
 export function useAuth(): UseAuthReturn {
   const { user, session, profile, loading, setProfile } = useAuthState();
@@ -18,7 +18,7 @@ export function useAuth(): UseAuthReturn {
   const wrappedCreateAdminProfile = async (userId: string, email: string) => {
     const result = await createAdminProfile(userId, email);
     if ('success' in result && result.success && 'profile' in result && result.profile) {
-      setProfile(result.profile);
+      setProfile(result.profile as Profile);
     }
     return result;
   };
@@ -26,7 +26,7 @@ export function useAuth(): UseAuthReturn {
   const wrappedCreateParticipantProfile = async (userId: string, email: string, name: string, phone: string) => {
     const result = await createParticipantProfile(userId, email, name, phone);
     if ('success' in result && result.success && 'profile' in result && result.profile) {
-      setProfile(result.profile);
+      setProfile(result.profile as Profile);
     }
     return result;
   };
@@ -34,7 +34,7 @@ export function useAuth(): UseAuthReturn {
   const wrappedCreateParticipantFromInvitation = async (userId: string, email: string, invitationToken: string) => {
     const result = await createParticipantFromInvitation(userId, email, invitationToken);
     if ('success' in result && result.success && 'profile' in result && result.profile) {
-      setProfile(result.profile);
+      setProfile(result.profile as Profile);
     }
     return result;
   };
