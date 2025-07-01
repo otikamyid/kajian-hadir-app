@@ -54,8 +54,12 @@ export function LandingPage() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/lovable-uploads/8a2bf4c5-d7e4-4716-8ea7-1b72802a300d.png" 
+                alt="Hadir Kajian Logo" 
+                className="h-8 w-auto sm:h-10"
+              />
               <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Hadir Kajian</h1>
             </div>
             <div className="flex space-x-2 sm:space-x-3">
@@ -94,6 +98,13 @@ export function LandingPage() {
       <section className="py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="space-y-6 sm:space-y-8">
+            <div className="flex justify-center mb-6">
+              <img 
+                src="/lovable-uploads/8a2bf4c5-d7e4-4716-8ea7-1b72802a300d.png" 
+                alt="Hadir Kajian Logo" 
+                className="h-20 w-auto sm:h-24"
+              />
+            </div>
             <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 leading-tight">
               Sistem Absensi Kajian
               <span className="block text-blue-600">Modern & Digital</span>
@@ -228,8 +239,12 @@ export function LandingPage() {
       <footer className="bg-gray-900 text-white py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="flex items-center justify-center space-x-3 mb-4">
+              <img 
+                src="/lovable-uploads/8a2bf4c5-d7e4-4716-8ea7-1b72802a300d.png" 
+                alt="Hadir Kajian Logo" 
+                className="h-6 w-auto sm:h-8"
+              />
               <span className="text-lg sm:text-xl font-bold">Hadir Kajian</span>
             </div>
             <p className="text-gray-400 text-sm sm:text-base px-4">

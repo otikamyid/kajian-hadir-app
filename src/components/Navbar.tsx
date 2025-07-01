@@ -48,9 +48,16 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-              Hadir Kajian {isAdmin ? 'Admin' : 'Peserta'}
-            </h1>
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/lovable-uploads/8a2bf4c5-d7e4-4716-8ea7-1b72802a300d.png" 
+                alt="Hadir Kajian Logo" 
+                className="h-6 w-auto sm:h-8"
+              />
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">
+                Hadir Kajian {isAdmin ? 'Admin' : 'Peserta'}
+              </h1>
+            </div>
             
             {/* Desktop Navigation */}
             <div className="hidden md:flex ml-8 space-x-4">
